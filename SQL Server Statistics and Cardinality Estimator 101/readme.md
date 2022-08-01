@@ -46,7 +46,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator on the **FK_Sales_OrderLines_OrderID** index. Notice SQL Server estimated it would return 5 rows, and it actually returned 5 rows. SQL Server was able to exactly estimate the number of rows returned by the query. 
 
-	![](Media/sql_server_statistics_1.PNG)
+	![](Media/sql_server_statistics_1.png)
 
 	Q: How SQL Server was able to estimate the number of rows to be returned?
 	
@@ -60,7 +60,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Notice that the histogram has the exact information on how rows (EQ_ROWS) exist for the OrderID 242. Therefore, SQL Server was able to estimate the exact number to be returned by the query.
 
-	![](Media/sql_server_statistics_2.PNG)
+	![](Media/sql_server_statistics_2.png)
 
 	It is important to understand that this was pure luck, the query looks for a value that is an upper bound column value for a histogram step. If you update statistics the upper bound column value for the histogram steps could change, or you can be looking for a value that is not an upper bound column value for a histogram step.
 
@@ -74,7 +74,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator on the **FK_Sales_OrderLines_OrderID** index. Notice SQL Server estimated it would return 3.14076 rows, and it actually returned 3 rows.
 
-	![](Media/sql_server_statistics_3.PNG)
+	![](Media/sql_server_statistics_3.png)
 
 	Q: It makes no sense to think that SQL Server will return a fraction of a row. Why SQL Server estimates a non-integer number of rows?
 	
@@ -82,7 +82,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Check the statistics again for the index. Notice that the histogram does not have information about how many rows exist for OrderID = 35871, so it uses the AVG_RANGE_ROWS clues for the step with the information for rows OrderID > 34751 and OrderID < 51419. Therefore, SQL Server is estimating a non-integer number of rows, it is using a value that correspond to the average of rows for each distinct value within the histogram step. AVG_RANGE_ROWS is calculated by dividing RANGE_ROWS by DISTINCT_RANGE_ROWS. You can refer to Microsoft documentation for further information.
 
-	![](Media/sql_server_statistics_4.PNG)
+	![](Media/sql_server_statistics_4.png)
 
 1. Query table *Sales.OrderLines* to get rows where *OrderID = 35871*
 
@@ -98,7 +98,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator on the **FK_Sales_OrderLines_OrderID** index. Notice SQL Server estimated it would return 3.1444 rows, and it actually returned 3 rows.
 
-	![](Media/sql_server_statistics_5.PNG)
+	![](Media/sql_server_statistics_5.png)
 
 	Notice that the number of estimated rows changed from 3.14076 to 3.1444.
 
@@ -135,7 +135,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	But, where did SQL Server get this information? From the index statistics
 
-	![](Media/sql_server_statistics_6.PNG)
+	![](Media/sql_server_statistics_6.png)
 
 	For demo purposes, let's suppose that the estimated number of rows is not close to reality when using a variable as search value in the WHERE clause, so need SQL Server to know the actual value to search for at compilation time. You can achieve it by using the RECOMPILE option:
 
@@ -164,11 +164,11 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Clustered Index Scan** operator on the **PK_Sales_OrderLines** index. Notice SQL Server estimated with total accuracy the number of rows to be returned (65963 rows)
 
-	![](Media/sql_server_statistics_8.PNG)
+	![](Media/sql_server_statistics_8.png)
 
 	SQL Server is using the histogram to get this value.
 
-	![](Media/sql_server_statistics_9.PNG)
+	![](Media/sql_server_statistics_9.png)
 
 1.  Look for rows where OrderID > 52412 using a variable as search value
 
@@ -182,7 +182,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Clustered Index Scan** operator on the **PK_Sales_OrderLines** index. Notice the estimated number of rows (69423.6) is far away from the actual number of rows returned (65963 rows)
 
-	![](Media/sql_server_statistics_10.PNG)
+	![](Media/sql_server_statistics_10.png)
 
 	As a variable is used, SQL Server does NOT know the value for @orderid at compilation time, so it needs to use another approach. In this case, the cardinality of the filter is equal to the cardinality of its left child multiplied by the probability of the comparison being true, which is always 30 percent.
 
@@ -203,7 +203,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Clustered Index Scan** operator. Notice SQL Server estimated 61.1877 rows, but it actually returned 1168. The estimation is far from the actual value, and it could cause that SQL Server chooses a plan that is not good.
 
-	![](Media/sql_server_statistics_11.PNG)
+	![](Media/sql_server_statistics_11.png)
 
 1. Look for rows where quantity*UnitPrice > 100
 
@@ -215,7 +215,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Clustered Index Scan** operator. Notice SQL Server estimated 69423.6 rows (30% of the table) but it actually returned 171257. The estimation is far from the actual value, and it could cause that SQL Server chooses a plan that is not good.
 
-	![](Media/sql_server_statistics_12.PNG)
+	![](Media/sql_server_statistics_12.png)
 
 	In both cases, what can be done to help SQL Server to get a better estimate and at the same time avoid the Clustered Index Scan? There could be several valid solutions, but in this case let�s use computed columns
 		
@@ -243,7 +243,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. The execution plan changed a bit, but the estimates did not improve. 
 
-	![](Media/sql_server_statistics_13.PNG)
+	![](Media/sql_server_statistics_13.png)
 
 	The same will happen for
 
@@ -265,7 +265,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Nested Loop** operator. Notice that the estimated number is rows is the same as the actual number of rows and an **Index Seek** operator is being used. We have a better plan now.
 
-	![](Media/sql_server_statistics_14.PNG)
+	![](Media/sql_server_statistics_14.png)
 
 	The same will happen for
 
@@ -280,7 +280,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 	dbcc show_statistics ('Sales.OrderLines',ix_OrderLines_totalforline)
 	```
 
-	![](Media/sql_server_statistics_15.PNG)
+	![](Media/sql_server_statistics_15.png)
 
 	The values in the RANGE_HI_KEY correspond to the result of quantity*UnitPrice
 
@@ -314,7 +314,7 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator. Notice that the query returns no rows, but the estimated number is rows is 199.75
 
-	![](/Media/sql_server_statistics_16.PNG)
+	![](/Media/sql_server_statistics_16.png)
 
 1. Open a second query window and see the statistics for the index used in the execution plan
 
@@ -324,7 +324,7 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	As expected, the expected number of rows is the AVG_RANGE_ROWS value for the step in the histogram that contains the value.
 
-	![](/Media/sql_server_statistics_17.PNG)
+	![](/Media/sql_server_statistics_17.png)
 
 
 	Q: Assume that most of your queries look for rows where PickingCompletedWhen are not older than 2 months. How can you help SQL Server to get better estimates?
@@ -350,7 +350,7 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator. Notice that the query returns no rows (as expected), but the estimated number is rows is now much closer to reality. In this case it estimated 1 instead of 199.75. A big improvement!!
 
-	![](/Media/sql_server_statistics_18.PNG)
+	![](/Media/sql_server_statistics_18.png)
 
 1. Review the histogram for the new filtered statistic:
 
@@ -360,4 +360,4 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	Notice that the histogram shows more accurate information about data distribution on the column *PickingCompletedWhen* of table *Sales.OrderLines*
 
-	![](/Media/sql_server_statistics_19.PNG)
+	![](/Media/sql_server_statistics_19.png)
