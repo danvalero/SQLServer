@@ -326,7 +326,6 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	![](/Media/sql_server_statistics_17.png)
 
-
 	Q: Assume that most of your queries look for rows where PickingCompletedWhen are not older than 2 months. How can you help SQL Server to get better estimates?
 
 	A: Filtered statistics
