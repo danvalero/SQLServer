@@ -1,11 +1,11 @@
 # SQL Server Indexing 101
-- [SQL Server Indexing 101](#sql-server-indexing-101)
-	- [1. Setting up the environment](#1-setting-up-the-environment)
-	- [2. Basic indexing 1 (searching conditions on a single column)](#2-basic-indexing-1-searching-conditions-on-a-single-column)
-	- [3. Basic indexing 2 (searching conditions on multiple column)](#3-basic-indexing-2-searching-conditions-on-multiple-column)
-	- [4. Order of columns and logical operators used to combine conditions and the impact on the index usage](#4-order-of-columns-and-logical-operators-used-to-combine-conditions-and-the-impact-on-the-index-usage)
-	- [5. Redundant indexes](#5-redundant-indexes)
-	- [6. Why is SQL Server not using existing indexes?](#6-why-is-sql-server-not-using-existing-indexes)
+
+- [1. Setting up the environment](#1-setting-up-the-environment)
+- [2. Basic indexing 1 (searching conditions on a single column)](#2-basic-indexing-1-searching-conditions-on-a-single-column)
+- [3. Basic indexing 2 (searching conditions on multiple column)](#3-basic-indexing-2-searching-conditions-on-multiple-column)
+- [4. Order of columns and logical operators used to combine conditions and the impact on the index usage](#4-order-of-columns-and-logical-operators-used-to-combine-conditions-and-the-impact-on-the-index-usage)
+- [5. Redundant indexes](#5-redundant-indexes)
+- [6. Why is SQL Server not using existing indexes?](#6-why-is-sql-server-not-using-existing-indexes)
 
 I will go step by step in the process of indexing a table to improve query performance. For this scenario, we will focus on reducing the number of pages read by the query as the criteria for success.
 
