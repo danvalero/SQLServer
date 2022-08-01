@@ -314,7 +314,7 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator. Notice that the query returns no rows, but the estimated number is rows is 199.75
 
-	![](/Media/sql_server_statistics_16.png)
+	![](Media/sql_server_statistics_16.png)
 
 1. Open a second query window and see the statistics for the index used in the execution plan
 
@@ -324,7 +324,7 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	As expected, the expected number of rows is the AVG_RANGE_ROWS value for the step in the histogram that contains the value.
 
-	![](/Media/sql_server_statistics_17.png)
+	![](Media/sql_server_statistics_17.png)
 
 	Q: Assume that most of your queries look for rows where PickingCompletedWhen are not older than 2 months. How can you help SQL Server to get better estimates?
 
@@ -346,10 +346,9 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 	FROM Sales.OrderLines
 	WHERE PickingCompletedWhen = '2016-05-15'
 	```
-
 	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Index Seek** operator. Notice that the query returns no rows (as expected), but the estimated number is rows is now much closer to reality. In this case it estimated 1 instead of 199.75. A big improvement!!
 
-	![](/Media/sql_server_statistics_18.png)
+	![](Media/sql_server_statistics_18.png)
 
 1. Review the histogram for the new filtered statistic:
 
@@ -359,4 +358,4 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	Notice that the histogram shows more accurate information about data distribution on the column *PickingCompletedWhen* of table *Sales.OrderLines*
 
-	![](/Media/sql_server_statistics_19.png)
+	![](Media/sql_server_statistics_19.png)
