@@ -62,13 +62,13 @@ If you want to do the demos by yourself, I recommend you to:
 
 	Go to the *Execution Plan* tab. Notice the plan uses a **Table Scan** operator.
 
-	![](Media/table-scan-1.png)
+	![](Media/table-scan-1.PNG)
 
 	This is expected as there is no index on the table and the query does not have a WHERE clause.
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 3809 
 
-	![](Media/table-scan-reads-1.png)
+	![](Media/table-scan-reads-1.PNG)
 
 1. Create a Clustered Index on Person.PersonDemo and execute the same query
 
@@ -89,13 +89,13 @@ If you want to do the demos by yourself, I recommend you to:
 
 	Go to the *Execution Plan* tab. Notice the plan uses a **Clustered Index Scan** operator.
 
-	![](Media/clustered-index-scan-1.png)
+	![](Media/clustered-index-scan-1.PNG)
 
 	You migth think this is a better execution plan. Is this really a better plan?
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 3818. This query actually did more logical reads 
 
-	![](Media/clustered-index-scan-reads-1.png)
+	![](Media/clustered-index-scan-reads-1.PNG)
 
 	Q: Why the plan that uses **Clustered Index Scan** does more loginal reads than the plan that uses a **Table Scan**?
 	A: The Clustered Index is the table physicaily order by the index key, The table with no clusterd index (called a HEAP) is the table with no order for the rows. As the Cluster Index is a BTree strcuture, it has more pages than the HEAP. For this reason the **Clustered Index Scan** does more reads than the **Table Scan**
@@ -110,11 +110,11 @@ If you want to do the demos by yourself, I recommend you to:
 
 	Go to the *Execution Plan* tab. Notice the plan uses a **Clustered Index Seek** operator.
 
-	![](Media/clustered-index-seek-1.png)
+	![](Media/clustered-index-seek-1.PNG)
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 3. This query was very efficient. This expeted beacuse you are looking for a unique row using the clustered index key.
 
-	![](Media/clustered-index-seek-reads-1-1.png)
+	![](Media/clustered-index-seek-reads-1-1.PNG)
 
 1. Find a row by using a simple equality condition on a non indexed column  
 
@@ -126,13 +126,13 @@ If you want to do the demos by yourself, I recommend you to:
 
 	Go to the *Execution Plan* tab. Notice the plan uses a **Clustered Index Scan** operator.
 
-	![](Media/clustered-index-scan-2.png)
+	![](Media/clustered-index-scan-2.PNG)
 
 	You migth this is a good plan because you are using the Clustered Index, however, remember that the Clustered Index is just  the table physically order by the index key, so the query is reading all rows in the table
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 3818. 
 
-	![](Media/clustered-index-scan-reads-2.png)
+	![](Media/clustered-index-scan-reads-2.PNG)
 
 	Q: Can you think of a way to reduce the logical reads and improve the overall performance of the query?
 
@@ -156,11 +156,11 @@ If you want to do the demos by yourself, I recommend you to:
 	* The Index Seek operator was used to locate all rows where *FirstName='Omar'*
 	* The Key Lookup  operator was used to retrieve the actual rows where *FirstName='Omar'*. It is executed, by SQL Server, after the Index Seek operation.
 
-	![](Media/Index-seek-and-lookup-1.png)
+	![](Media/Index-seek-and-lookup-1.PNG)
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 135, a big reduction compared to the pages reads when Clustered Index Scan operator was used. 
 
-	![](Media/Index-seek-and-lookup-reads-1.png)
+	![](Media/Index-seek-and-lookup-reads-1.PNG)
 
 1. Let�s see what happen when a wildcard is used in the search value
 
@@ -174,7 +174,7 @@ If you want to do the demos by yourself, I recommend you to:
 
 	Go to the *Execution Plan* tab. Notice the plan looks similar but if you take a closer look you will notice it uses an **Index Scan** operator instead of an  **Index Seek** operator.
 
-	![](Media/Index-scan-and-lookup-1.png)
+	![](Media/Index-scan-and-lookup-1.PNG)
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 210. The number of reads increased because you are now scaning the index to idenitify all rows where FirstName ends with *mar*, it is better than doing a **Clustered IndexScan** but not as good as doing an **Index Seek**
 
@@ -190,7 +190,7 @@ If you want to do the demos by yourself, I recommend you to:
 
 	Notice the plan uses an **Index Seek** and a **Key Lookup** operator.
 
-	![](Media/Index-seek-and-lookup-2.png)
+	![](Media/Index-seek-and-lookup-2.PNG)
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 146. The number of reads reduced but it is still higher than the query that does not use wildcards, it is normal becuase you are not looking for an specific value, but a range of values.
 
@@ -240,13 +240,13 @@ Hint: There are two possible ways to do it.
 		* Later, it does a Merge Join to have get rows where FirstName='Omar' and LastName='Jai' with no duplicated values.
 		* Finally, it does a key look up to retrieve all columns for all rows that complies with both conditions.
 
-	![](Media/query-two-columns-1.png)
+	![](Media/query-two-columns-1.PNG)
 
 	Q: Was the index helpfulp?
 
 	Go to the *Messages* tab. Notice the total of logical reads, it is about 8. Using both indexes helped reduce the reads required to execute the query. 
 
-	![](Media/query-two-columns-reads-1.png)
+	![](Media/query-two-columns-reads-1.PNG)
 
 1. Create a composite index on FirstName and LastName:
 
@@ -266,7 +266,7 @@ Hint: There are two possible ways to do it.
 
 	Go to the *Execution Plan* tab.  Notice the plan uses an **Index Seek** on the **ix_PersonDemo_FirstName_LastName** index
 
-	![](Media/Index-seek-and-lookup-2.png)
+	![](Media/Index-seek-and-lookup-2.PNG)
 
 	Q: Is this better than using both ix_PersonDemo_FirstName and ix_PersonDemo_LastName indexes?
 
@@ -296,7 +296,7 @@ Execute (at the same time) two queries that return the same result but the WHERE
 
 Go to the *Execution Plan* tab. Notice both queries use the same plan, and the plan does an Index Seek on ix_PersonDemo_FirstName_LastName
 
-![](Media/query-column-order-1.png)
+![](Media/query-column-order-1.PNG)
 
 SQL Server internally rewrites the query in such a way that the index can be used no matter the order of the columns in the where clause. This works because both conditions are used with the AND logical operator.
 
@@ -316,7 +316,7 @@ Go to the *Execution Plan* tab. The plan does:
 - a concatenation to join all rows where FirstName = 'Omar' and LastName='Jai'  
 - a sort to delete duplicated rows
 
-![](Media/query-condition-or-1.png)
+![](Media/query-condition-or-1.PNG)
 
 From the plan it is safe to say that it is not the same to combine conditions  using the AND logical operator than to combine conditions using the OR logical operator, and in consequence different indexes might be required.
 
@@ -386,7 +386,7 @@ WHERE PersonType = 'SC'
 ```
 Go to the *Execution Plan* tab. Notice the plan does an **Index Seek** on *ix_PersonDemo_PersonType*. This is what we were looking for when created the index
 
-![](Media/tipping-point-1.png)
+![](Media/tipping-point-1.PNG)
 
 Execute the same query but look for another value of PersonType
 ```sql
@@ -416,7 +416,7 @@ WHERE PersonType = 'IN'
 
 Go to the *Execution Plan* tab. The plan is now doing a **Clustered Index Scan**, that means it is scanning all rows on the table instead of using the index. 
 
-![](Media/tipping-point-2.png)
+![](Media/tipping-point-2.PNG)
 
 What happened? Has SQL Server gone crazy? There is an index for PersonType, and it used it before, why is it not using it now?
 
@@ -428,7 +428,7 @@ GROUP BY PersonType
 ORDER BY 2 DESC
 ```
 
-![](Media/tipping-point-3.png)
+![](Media/tipping-point-3.PNG)
 
 Notice that there are few rows for *SP*, *VC*, etc, but many rows for *IN*. In this case SQL Server has determined that using an **Index Seek** operation to get rows where PersonType='IN' is more expensive than doing a **Clustered Index Scan**
 
@@ -445,19 +445,19 @@ Go to the *Execution Plan* tab.
 
 Put the mouse over the arrow that goes from the **Clustered Index Scan** operator to the **SELECT** operator
 
-![](Media/tipping-point-4.png)
+![](Media/tipping-point-4.PNG)
 
 Notice SQL Server estimated that it would return 18424 and it actually read 18424 rows.
 
 Put the mouse over the **SELECT** operator
 
-![](Media/tipping-point-5.png)
+![](Media/tipping-point-5.PNG)
 
 Notice the estimated cost of the query is 2.84525
 
 Go to the *Messages* tab. Notice the total of logical reads, it is about 3818.
 
-![](Media/tipping-point-6.png)
+![](Media/tipping-point-6.PNG)
 
 Lets assume for a moment that SQL Server is doing a bad job and it is not using *ix_PersonDemo_PersonType* for some strange unknown reason, so execute the query forcing the index
 
@@ -468,19 +468,19 @@ WHERE PersonType = 'IN'
 ```
 Go to the *Execution Plan* tab. 
 
-![](Media/tipping-point-7.png)
+![](Media/tipping-point-7.PNG)
 
 It now uses an Index Seek. But, is that really better?
 
 Put the mouse over the **SELECT** operator
 
-![](Media/tipping-point-8.png)
+![](Media/tipping-point-8.PNG)
 
 Notice the estimated cost of the query is 14.8537. This plan is seven times more expensive than the plan that does a **Clustered Index Scan** 
 
 Go to the *Messages* tab. 
 
-![](Media/tipping-point-9.png)
+![](Media/tipping-point-9.PNG)
 
 Notice the total of logical reads, it is about 57246, almost 15 times more reads that the plan that does a **Clustered Index Scan** 
 
@@ -503,7 +503,7 @@ Review the statistics for the *ix_PersonDemo_PersonType* index by executing:
 DBCC SHOW_STATISTICS ('Person.PersonDemo',ix_PersonDemo_PersonType)
 ```
 
-![](Media/tipping-point-10.png)
+![](Media/tipping-point-10.PNG)
 
 In the third part of the output, you have the histogram. Notice that SQL Server knows how many rows there are for each value of *PersonType*. In this example, you have accurate values, however, if the first column of the index key has many different values or there were many updates on the table since the last time the statistics was updated the values on the histogram will not be exact, but this a topic for another post. 
 
@@ -511,7 +511,7 @@ When SQL Server is creating the execution plan for a query it identify relevant 
 
 The Execution Plan XML has a property named **OptimizerStatsUsage** that lists all statistics that were used during the optimization of the execution plan. You can also see the proprerty in SSMS
 
-![](Media/tipping-point-11.png)
+![](Media/tipping-point-11.PNG)
 
 ---
 
@@ -542,7 +542,7 @@ WHERE YEAR(ModifiedDate) = 2009
 
 Go to the *Execution Plan* tab. You might expect SQL Server to do an **Index Seek** on *ix_PersonDemo_ModifiedDate*, however, it is using an **Index Scan**
 
-![](Media/nonsargable-1.png)
+![](Media/nonsargable-1.PNG)
 
 Even when there is an index on *ModifiedDate*, in the WHERE clause the search condition uses a function on *ModifiedDate*. The index is on *ModifiedDate*, not YEAR(ModifiedDate) or YEAR(ModifiedDate), so SQL Server has no option other than scanning the index.
 
@@ -557,7 +557,7 @@ WHERE ModifiedDate >= '2009-02-01'
 
 Execute the query and go to the *Execution Plan* tab. Now the plan uses a **Index Seek** on *ix_PersonDemo_ModifiedDate*
 
-![](Media/nonsargable-2.png)
+![](Media/nonsargable-2.PNG)
 
 As another example execute
 ```sql
@@ -568,7 +568,7 @@ WHERE FirstName = 'Omar'
 
 Go to the *Execution Plan* tab. You might expect SQL Server to do an **Index Seek** on *ix_PersonDemo_FirstName_LastName*
 
-![](Media/nonsargable-3.png)
+![](Media/nonsargable-3.PNG)
 
 Now execute
 
@@ -582,7 +582,7 @@ Notice that in this case it returns the exact same information as the query that
 
 Go to the *Execution Plan* tab. NOtice that is now uses an **Index Scan** on *ix_PersonDemo_FirstName_LastName*
 
-![](Media/nonsargable-4.png)
+![](Media/nonsargable-4.PNG)
 
 The reason, the usage of the function UPPER on the search column
 
@@ -603,7 +603,7 @@ WHERE NationalIDNumber = 301435199
 
 Go to the *Execution Plan* tab. A **Clustered Index Scan** is used even when there is an index on *NationalIDNumber*
 
-![](Media/nonsargable-5.png)
+![](Media/nonsargable-5.PNG)
 
 In this case, the column name *NationalIDNumber* seems to indicate that the column represents a numeric value, however, if you check the data type for the column 
 
@@ -629,5 +629,5 @@ WHERE NationalIDNumber = '301435199'
 
 the execution plan uses an **Index Seek**
 
-![](Media/nonsargable-6.png)
+![](Media/nonsargable-6.PNG)
 
