@@ -108,7 +108,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	In the query 
 
-	```
+	```sql
 	SELECT * 
 	FROM Sales.OrderLines
 	WHERE OrderID = 35871
@@ -118,7 +118,7 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	In the query 
 
-	```
+	```sql
 	DECLARE @orderid int
 	SET @orderid = 35871
 	SELECT * 
