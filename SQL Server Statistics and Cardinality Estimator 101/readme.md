@@ -217,72 +217,72 @@ I recommend you to read [DBCC SHOW_STATISTICS (Transact-SQL)](https://docs.micro
 
 	![](Media/sql_server_statistics_12.png)
 
-	In both cases, what can be done to help SQL Server to get a better estimate and at the same time avoid the Clustered Index Scan? There could be several valid solutions, but in this case let�s use computed columns
+	In both cases, what can be done to help SQL Server to get a better estimate and at the same time avoid the Clustered Index Scan? There could be several valid solutions, but in this case Let's use computed columns
 		
-1. Create a computed column with the result of quantity*UnitPrice:
+   1. Create a computed column with the result of quantity*UnitPrice:
 
-	```sql
-	ALTER TABLE Sales.OrderLines 
-	ADD [totalforline]  AS ([UnitPrice]*[Quantity])
-	```
+		```sql
+		ALTER TABLE Sales.OrderLines 
+		ADD [totalforline]  AS ([UnitPrice]*[Quantity])
+		```
 
-1. Create an index on the computed column
+	1. Create an index on the computed column
 
-	```sql
-	CREATE INDEX ix_OrderLines_totalforline
-	ON Sales.OrderLines (totalforline)
-	```
+		```sql
+		CREATE INDEX ix_OrderLines_totalforline
+		ON Sales.OrderLines (totalforline)
+		```
 
-1.  Look again for rows where quantity*UnitPrice = 100
+	1.  Look again for rows where quantity*UnitPrice = 100
 
-	```sql
-	SELECT * 
-	FROM Sales.OrderLines
-	WHERE quantity*UnitPrice = 100
-	```
+		```sql
+		SELECT * 
+		FROM Sales.OrderLines
+		WHERE quantity*UnitPrice = 100
+		```
 
-	Go to the *Execution Plan* tab. The execution plan changed a bit, but the estimates did not improve. 
+		Go to the *Execution Plan* tab. The execution plan changed a bit, but the estimates did not improve. 
 
-	![](Media/sql_server_statistics_13.png)
+		![](Media/sql_server_statistics_13.png)
 
-	The same will happen for
+		The same will happen for
 
-	```sql
-	SELECT * 
-	FROM Sales.OrderLines
-	WHERE quantity*UnitPrice > 100
-	```
+		```sql
+		SELECT * 
+		FROM Sales.OrderLines
+		WHERE quantity*UnitPrice > 100
+		```
 
-	What can be done to take advantage of the computed column and the index on it? 
+		What can be done to take advantage of the computed column and the index on it? 
 
-1. Change the query to use the computed column in the WHERE clause 
+	1. Change the query to use the computed column in the WHERE clause 
 
-	```sql
-	SELECT * 
-	FROM Sales.OrderLines
-	WHERE totalforline = 100
-	```
+		```sql
+		SELECT * 
+		FROM Sales.OrderLines
+		WHERE totalforline = 100
+		```
 
-	Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Nested Loop** operator. Notice that the estimated number is rows is the same as the actual number of rows and an **Index Seek** operator is being used. We have a better plan now.
+		Go to the *Execution Plan* tab. Place the mouse pointer on top of the arrow that starts in the **Nested Loop** operator. Notice that the estimated number is rows is the same as the actual number of rows and an **Index Seek** operator is being used. We have a better plan now.
 
-	![](Media/sql_server_statistics_14.png)
+		![](Media/sql_server_statistics_14.png)
 
-	The same will happen for
+		The same will happen for
 
-	```sql
-	SELECT * 
-	FROM Sales.OrderLines
-	WHERE quantity*UnitPrice > 100
-	```
+		```sql
+		SELECT * 
+		FROM Sales.OrderLines
+		WHERE totalforline > 100
+		```
 
-1. Explore the statitiscs for the index *ix_OrderLines_totalforline*
-	```sql
-	dbcc show_statistics ('Sales.OrderLines',ix_OrderLines_totalforline)
-	```
+	1. Explore the statitiscs for the index *ix_OrderLines_totalforline*
+		```sql
+		dbcc show_statistics ('Sales.OrderLines',ix_OrderLines_totalforline)
+		```
 
-	![](Media/sql_server_statistics_15.png)
+		![](Media/sql_server_statistics_15.png)
 
-	The values in the RANGE_HI_KEY correspond to the result of quantity*UnitPrice
+		The values in the RANGE_HI_KEY correspond to the result of quantity*UnitPrice
 
 ---
 
@@ -296,7 +296,7 @@ As the number of rows in a table grows, if the data is not evenly distributed, t
 
 	```sql
 	SELECT MIN(PickingCompletedWhen), 
-			MAX(PickingCompletedWhen) 
+            MAX(PickingCompletedWhen) 
 	FROM Sales.OrderLines 
 	```
 

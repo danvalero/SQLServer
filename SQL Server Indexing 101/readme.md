@@ -82,6 +82,7 @@ If you want to do the demos by yourself, I recommend you to:
 	```
 
 	Execute the same query executed in the previous step
+
 	```sql
 	SELECT * FROM Person.PersonDemo
 	GO
@@ -162,9 +163,9 @@ If you want to do the demos by yourself, I recommend you to:
 
 	![](Media/Index-seek-and-lookup-reads-1.PNG)
 
-1. Let�s see what happen when a wildcard is used in the search value
+1. Let's see what happen when a wildcard is used in the search value
 
-	Let�s retrieve all rows where the value on FirstName ends with *mar*. Execute:
+	Let's retrieve all rows where the value on FirstName ends with *mar*. Execute:
 
 	```sql
 	SELECT * 
@@ -180,7 +181,7 @@ If you want to do the demos by yourself, I recommend you to:
 
 	**IMPORTANT:** I am not saying than using wildcard at the end of the search value is bad and you shuold never do it, just undestand the impact of doing it and try to avoid it if possible.
 
-	Let�s retrieve all rows where the value on FirtName starts with *Om*. Execute:
+	Let's retrieve all rows where the value on FirtName starts with *Om*. Execute:
 
 	```sql
 	SELECT * 
@@ -200,12 +201,12 @@ If you want to do the demos by yourself, I recommend you to:
 
 Find a row by using equality conditions on two different columns
 
-	```sql
-	SELECT * 
-	FROM Person.PersonDemo
-	WHERE  FirstName = 'Omar' 
-		and LastName = 'Jai' 
-	```
+```sql
+SELECT * 
+FROM Person.PersonDemo
+WHERE  FirstName = 'Omar' 
+	and LastName = 'Jai' 
+```
 
 Go to the *Execution Plan* tab.  Notice the plan uses an **Index Seek** and a **Key Lookup** operator.
 
@@ -235,10 +236,10 @@ Hint: There are two possible ways to do it.
 	```
 
 	Go to the *Execution Plan* tab. The plan seems to be more complex and it uses two **Index Seek** operators and a **Merge Join** operator:
-		* SQL Server does an Index Seek to identify all rows where FirstName='Omar'
-		* Then it does an Index Seek to identify all rows where LastName='Jai'
-		* Later, it does a Merge Join to have get rows where FirstName='Omar' and LastName='Jai' with no duplicated values.
-		* Finally, it does a key look up to retrieve all columns for all rows that complies with both conditions.
+		- SQL Server does an Index Seek to identify all rows where FirstName='Omar'
+		- Then it does an Index Seek to identify all rows where LastName='Jai'
+		- Later, it does a Merge Join to have get rows where FirstName='Omar' and LastName='Jai' with no duplicated values.
+		- Finally, it does a key look up to retrieve all columns for all rows that complies with both conditions.
 
 	![](Media/query-two-columns-1.PNG)
 
@@ -282,17 +283,17 @@ Q: Will the idex be used if the columns are used in a different order in the WHE
 
 Execute (at the same time) two queries that return the same result but the WHERE clause as written diffrently (the order of the columns in the condition was inverted)
 
-	```sql
-	SELECT * 
-	FROM Person.PersonDemo
-	WHERE  FirstName = 'Omar' 
-		and LastName = 'Jai' 
+```sql
+SELECT * 
+FROM Person.PersonDemo
+WHERE  FirstName = 'Omar' 
+	and LastName = 'Jai' 
 
-	SELECT * 
-	FROM Person.PersonDemo
-	WHERE LastName = 'Jai' 
-		and FirstName = 'Omar' 
-	```
+SELECT * 
+FROM Person.PersonDemo
+WHERE LastName = 'Jai' 
+	and FirstName = 'Omar' 
+```
 
 Go to the *Execution Plan* tab. Notice both queries use the same plan, and the plan does an Index Seek on ix_PersonDemo_FirstName_LastName
 
@@ -432,7 +433,7 @@ ORDER BY 2 DESC
 
 Notice that there are few rows for *SP*, *VC*, etc, but many rows for *IN*. In this case SQL Server has determined that using an **Index Seek** operation to get rows where PersonType='IN' is more expensive than doing a **Clustered Index Scan**
 
-Lets see in more detail the execution plans to find out why SQL Server is making such a decision.
+Let's see in more detail the execution plans to find out why SQL Server is making such a decision.
 
 Execute again the query
 ```sql
@@ -489,6 +490,7 @@ SQL Server had already evaluated the cost of using an **Index Seek** and the cos
 **IMPORTANT:** This is a simple example and SQL Server was able to choose the best execution plan, but in more complex scenarios SQL Server will look for a good enough plan, not necessarily the best plan
 
 Q: SQL Server does a good job when creating the execution plan, does it means that I should never force indexes?
+
 A: No, query hints are useful in some scenarios, just make sure you are using them correctly. Compare the plan with and without the hint and select the best option depending on the results.
 
 Ok, so what is the **Tipping Point** then? it is the point at which the number of page reads required by the lookups operator are higher than the total number of data pages in the table. If this happens doing an Index Seek is more expensive than scanning the table 
@@ -547,6 +549,7 @@ Go to the *Execution Plan* tab. You might expect SQL Server to do an **Index See
 Even when there is an index on *ModifiedDate*, in the WHERE clause the search condition uses a function on *ModifiedDate*. The index is on *ModifiedDate*, not YEAR(ModifiedDate) or YEAR(ModifiedDate), so SQL Server has no option other than scanning the index.
 
 This is a common pattern, but it can be easily fixed. The query can be rewritten as
+
 ```sql
 SELECT * 
 FROM Person.PersonDemo
@@ -560,6 +563,7 @@ Execute the query and go to the *Execution Plan* tab. Now the plan uses a **Inde
 ![](Media/nonsargable-2.PNG)
 
 As another example execute
+
 ```sql
 SELECT * 
 FROM Person.PersonDemo
@@ -580,7 +584,7 @@ WHERE UPPER(FirstName) = UPPER('Omar')
 
 Notice that in this case it returns the exact same information as the query that does not use the UPPER function.
 
-Go to the *Execution Plan* tab. NOtice that is now uses an **Index Scan** on *ix_PersonDemo_FirstName_LastName*
+Go to the *Execution Plan* tab. Notice that is now uses an **Index Scan** on *ix_PersonDemo_FirstName_LastName*
 
 ![](Media/nonsargable-4.PNG)
 
