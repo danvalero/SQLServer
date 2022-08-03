@@ -891,11 +891,17 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 
 ### Demo 3. Partitioning and Data Management
 
+Partitioning management has 3 basic tasks: create partitiona and delete partitions
+
+You can add new partiion to a table until the 15.000 partiions limits. You can also keep just a fixed number of partition in a slideing windows scenarios where you delete the oldest partition and craete a new none for the most recetn data
+
+For this demo, the partiion with the oldest data will be deleted and a new one will bre created for the most recent data
+
 1. What is the partition with the oldest data?
 
-	It should always be partition 2? XXXXXXXXXexplain
+	In this demo, it should always be partition 2. Partition 1 if for the range minus infinity to the first date of data
 
-	Answer: for this case, based on the table and partitions design Partition 2 should always be the one with the oldest data
+	Confirm that by executing:
 
 	```sql
 	USE [WideWorldImporters]
@@ -929,18 +935,20 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 	order by p.object_id, p.partition_number, i.index_id
 	```
 
+	![Lab10014](Media/lab10014.png)
+	
 	See partitionNumber 1 and 2 for the partitioned table
 
 1. Delete old data
 
-	To delete from a partition, starting SQL Server 2016, you can truncate a partition
+	To delete data from a partition, starting SQL Server 2016, you can truncate a partition:
 
 	```sql
 	TRUNCATE TABLE [Sales].[P_Orders]
 	WITH (PARTITIONS (2));
 	```
 
-	Now P_Orders has 2 empty partitions (PartitionNumber=1 and ParitionNumber=2)
+	Now P_Orders has 2 empty partitions (PartitionNumber=1 and ParitionNumber=2). Confirm that by executing:
 
 	```sql
 	SELECT
@@ -971,18 +979,20 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 	order by p.object_id, p.partition_number, i.index_id
 	```
 
-	Drop the partition that was truncated. Notice:
+	![Lab10015](Media/lab10015.png)
+
+	Notice:
 	- the boundaries between partitionNumber 1 and 2
 	- that before the MERGE the table has 41 partitions 
+
+	Drop the partition that was truncated by merging at the bounday of the two empty partitions. 
 
 	```sql
 	ALTER PARTITION FUNCTION [PF_SalesOrder_MONTHLY]()
 	MERGE RANGE ('2013-02-01')
 	```
 
-	Validate that the partition was deleted. Notice:
-   - Notice the boundaries between partitionNumber 1 and 2
-   - Notice that after the MERGE the table has 40 partitions 
+	Validate that the partition was deleted by executing:
 
 	```sql
 	SELECT
@@ -1012,6 +1022,12 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 	AND p.index_id = 1
 	order by p.object_id, p.partition_number, i.index_id
 	```
+
+	![Lab10016](Media/lab10016.png)
+
+	Notice:
+   - Notice the boundaries between partitionNumber 1 and 2
+   - Notice that after the MERGE the table has 40 partitions 
 
 1. Create a partition for the next month
 
@@ -1030,10 +1046,7 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 	SPLIT RANGE ('2016-06-01');
 	```
 
-	Validate that a the partition was created. Notice that:
-   - after the SPLIT the table has 41 partitions 
-   - the boudnaries for PartitionNumber=41
-
+	Validate that a the partition was created by executing:
 	```sql
 	SELECT
 		OBJECT_NAME(p.object_id) AS ObjectName, 
@@ -1063,10 +1076,15 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 	order by p.object_id, p.partition_number, i.index_id
 	```
 
+	Notice that:
+   - after the SPLIT the table has 41 partitions 
+   - the boudnaries for PartitionNumber=41
+
 
 ### 2.7 Partitioning and index maintenance	
 
-You can rebuild or reorganize a partition (or a group of it) instead of the entire table.
+You can rebuild or reorganize a partition (or a group of it) instead of the entire table. 
+
 It increases the availability of the database and reduces the performance impact of maintenances
 
 >NOTE: ONLINE option is available starting SQL Sever 2014
@@ -1161,11 +1179,11 @@ Suppose that your application only allows you to list the orders for a customer 
 
 >NOTE: In the demo, a fixed date is used and not getdate() because the table only contains records up to 2016-06-01
 
+>Make sure you enable Include Actual Execution Plan (Ctrl-M)
+
 ```sql
 USE [WideWorldImporters]
-go
-
--- Include Actual Execution Plan (Ctrl-M)
+GO
 
 set statistics io on
 
@@ -1174,6 +1192,8 @@ FROM [Sales].[P_Orders]
 WHERE CustomerID = 404
 AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
 ```
+
+![Lab10017](Media/lab10017.png)
 
 This query uses an Index Seek operator, a reduced number of logical reads and due to partition elimination, it is quite efficient
 
@@ -1192,10 +1212,10 @@ GROUP BY i.[name]
 GO
 ```
 
-This index covers all data in the table but we only search rows for the last sixty days 
+This index covers all data in the table but we only search rows for the last sixty days so we have "wasted" space onthe index. It is posible to
+improve space usage and index efficiency and reduce time for maintenance operations by deleting the original index and create three indexes, each covering each the last three months
 
-How to improve it? 
-Delete the original index and create three indexes, covering the last three months
+>Depending the escenario insted of creating three indexes, you can crete a single index for the last 3 months.. The only way to know the best option is to create them and tests querys and compare execution plans
 
 ```sql
 DROP INDEX [FK_Sales_P_Orders_CustomerID] ON [Sales].[P_Orders]
@@ -1231,9 +1251,9 @@ WHERE CustomerID = 404
 AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
 ```
 
-Look at the Actual Number of Rows and the Estimated Number of Rows.  
-- Do SQL Server can make better estimations?
-- Does the query do less logical read?
+![Lab10018](Media/lab10018.png)
+
+Look at the Actual Number of Rows and the Estimated Number of Rows. SQL Server was able to make a better estimation
 
 See how much space the index uses with the following script
 
@@ -1248,8 +1268,7 @@ GROUP BY i.[name]
 GO
 ```
 
-Now less space is used for indexes
-
+Now less space is used for indexes, aroud 168KB insted of 2048KB
 
 Do the same search but using variables
 
@@ -1266,7 +1285,7 @@ AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
 ```
 
 Notice that the estimation is not that good and the filtered index is not used. why?
-Depending the escenario insted of creating three indexes, you can crete a single index for the last 4 months.. The only way to know the best option is to create them and tests querys and compare execution plans
+
 
 Use the option RECOMPILE
 
