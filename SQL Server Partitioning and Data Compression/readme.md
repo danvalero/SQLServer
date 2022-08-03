@@ -1275,8 +1275,8 @@ Do the same search but using variables
 ```sql
 DBCC FREEPROCCACHE
 
-declare @fecha_inicial date = '2016-04-01'
-declare @fecha_final date = '2016-05-01'
+DECLARE @fecha_inicial date = '2016-04-01'
+DECLARE @fecha_final date = '2016-05-01'
 
 SELECT * 
 FROM [Sales].[P_Orders]
@@ -1284,14 +1284,18 @@ WHERE CustomerID = 404
 AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
 ```
 
-Notice that the estimation is not that good and the filtered index is not used. why?
+![Lab10019](Media/lab10019.png)
 
+Notice that the estimation is not that good and the filtered index is not used. 
+The reason for this is that SQL Server does not know the variable values at compilation time so it cannot use the filtered index
 
 Use the option RECOMPILE
 
 ```sql
-declare @fecha_inicial date = '2016-04-01'
-declare @fecha_final date = '2016-05-01'
+DBCC FREEPROCCACHE
+
+DECLARE @fecha_inicial date = '2016-04-01'
+DECLARE @fecha_final date = '2016-05-01'
 
 SELECT * 
 FROM [Sales].[P_Orders]
@@ -1300,7 +1304,10 @@ AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
 OPTION (RECOMPILE)
 ```
 
-The query uses the filtered index only when you use RECOMPILE, Why?
+![Lab10020](Media/lab10020.png)
+
+The query uses the filtered index and the estimations are so much better. 
+When using RECOMPILE, the actual variable values are used by the optimizer and it allows SQL Server to use the filtered index
 
 Expand the range of search
 
@@ -1313,7 +1320,7 @@ WHERE CustomerID = 404
 AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
 ```
 
-Notice that you do not use filtered indexes and SQL scans the table even when the two indexes (combined) cover the range. Why?
+Notice that you do not use filtered indexes and SQL scans the table even when the two indexes (combined) cover the range.
 
 Is there anything you can do to improve performance using filtered indexes in this scenario? Think of maintenance effors
 
@@ -1359,18 +1366,11 @@ Supose that your application only allows you to list the of orders for a custome
 
 >NOTE: In the demo, a fixed date is used and not getdate() because the table only contains records up to 2016-06-01
 
+>Make sure you enable Include Actual Execution Plan (Ctrl-M)
+
 ```sql
 USE [WideWorldImporters]
-go
-
--- NOTE: Enable the trace flag based on your SQL Server version
-
---DBCC TRACEON(2363,3604,-1) -- For SQL Server 2014+
---DBCC TRACEON(9204,3604,-1) -- For SQL Server 2012
--- NOTE: We use a fixed date and not getdate() because
---       the table conly contains records up to 2016-06-01
-
--- Include Actual Execution Plan (Ctrl-M)
+GO
 
 set statistics io on
 
@@ -1382,18 +1382,13 @@ WHERE CustomerID = 404
 AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
 ```
 
+![Lab10021](Media/lab10021.png)
+
 This query uses an Index Seek operator, a reduced number of logical reads and due to partition elimination, it is quite efficient
 
-However, look at the Actual Number of Rows and the Estimated Number of Rows
+However, look at the Actual Number of Rows and the Estimated Number of Rows. Not bad, but can it be better?
 
-You can check the Message tab to see which histograms were loaded  and use the following query to see existing statitics on the table
-
-```sql
-select * from sys.stats
-where object_id = object_id ('[Sales].[P_Orders]')
-```
-
-To get better estimations, lets create filtered statistics  for the last three months (3 partitions)
+To get better estimations, create filtered statistics for the last three months (3 partitions)
 
 ```sql
 CREATE STATISTICS [STAT_Sales_P_Order_CustomerID_2016_05] ON [Sales].[P_Orders] 
@@ -1423,14 +1418,11 @@ WHERE CustomerID = 404
 AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
 ```
 
-Look at the Actual Number of Rows and the Estimated Number of Rows. Can SQL Server make better estimations?
+![Lab10022](Media/lab10022.png)
+
+Look at the Actual Number of Rows and the Estimated Number of Rows. The estiamtion is closer to reality 
 
 You can check the Message tab to see which histograms were loaded. Notice that the filtered statistic for April 2016 was loaded
-
-```sql
-select * from sys.stats
-where object_id = object_id ('[Sales].[P_Orders]')
-```
 
 Execute the original query but using variables
 
