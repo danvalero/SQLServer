@@ -498,7 +498,7 @@ The table **SalesOrder** will be partiioned considering that:
 	ORDER BY p.object_id, p.partition_number, i.index_id
 	```
 
--- Discuss what you see with participants
+   -- Discuss what you see with participants
 
 	The following index does not exists in the original table but is created to show a concept
 
@@ -768,7 +768,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 ### 2.6 Partitioning and data management
 
-#### Deleting partitions – Truncate table with partition (SQL Server 2016)
+#### Deleting partitions - Truncate table with partition (SQL Server 2016)
 
 ![Delete1](Media/delete1.png)
 
@@ -992,58 +992,58 @@ WITH ( ONLINE = ON )
 
 1. Calculate the fragmentation for all partitions of index_id = 1 for [Sales].[P_Orders]
 
-```sql
-select database_id, object_id, index_id, partition_number, avg_fragmentation_in_percent
-from sys.dm_db_index_physical_stats (db_id(), object_id('[Sales].[P_Orders]'),1,null,'LIMITED' )
-```
+	```sql
+	select database_id, object_id, index_id, partition_number, avg_fragmentation_in_percent
+	from sys.dm_db_index_physical_stats (db_id(), object_id('[Sales].[P_Orders]'),1,null,'LIMITED' )
+	```
 
 1. Calculate the fragmentation for all partitions of all indexes of [Sales].[P_Orders]
 
-```sql
-select database_id, object_id, index_id, partition_number, avg_fragmentation_in_percent
-from sys.dm_db_index_physical_stats (db_id(), object_id('[Sales].[P_Orders]'),null,null,'LIMITED' )
-```
+	```sql
+	select database_id, object_id, index_id, partition_number, avg_fragmentation_in_percent
+	from sys.dm_db_index_physical_stats (db_id(), object_id('[Sales].[P_Orders]'),null,null,'LIMITED' )
+	```
 
 1. Calculate the fragmentation for partition 10 for index_id=1 of [Sales].[P_Orders]
 
-```sql
-select database_id, object_id, index_id, partition_number, avg_fragmentation_in_percent
-from sys.dm_db_index_physical_stats (db_id(), object_id('[Sales].[P_Orders]'),1,10,'LIMITED' )
-```
+	```sql
+	select database_id, object_id, index_id, partition_number, avg_fragmentation_in_percent
+	from sys.dm_db_index_physical_stats (db_id(), object_id('[Sales].[P_Orders]'),1,10,'LIMITED' )
+	```
 
 1. Rebuild a single partition of [Sales].[P_Orders]
 
-```sql
-ALTER INDEX [PK_Sales_P_Orders]
-ON [Sales].[P_Orders]
-REBUILD Partition = 10
-WITH ( ONLINE = ON )  -- ONLINE is a new option in SQL Server 2014
-```
+	```sql
+	ALTER INDEX [PK_Sales_P_Orders]
+	ON [Sales].[P_Orders]
+	REBUILD Partition = 10
+	WITH ( ONLINE = ON )  -- ONLINE is a new option in SQL Server 2014
+	```
 
 1. Rebuild all partitions of [Sales].[P_Orders]
 
-```sql
-ALTER INDEX [PK_Sales_P_Orders]
-ON [Sales].[P_Orders]
-REBUILD 
-WITH ( ONLINE = ON )  -- ONLINE is a new option in SQL Server 2014
-```
+	```sql
+	ALTER INDEX [PK_Sales_P_Orders]
+	ON [Sales].[P_Orders]
+	REBUILD 
+	WITH ( ONLINE = ON )  -- ONLINE is a new option in SQL Server 2014
+	```
 
 1. Reorganize a single partition of [Sales].[P_Orders]
 
-```sql
-ALTER INDEX [PK_Sales_P_Orders]
-ON [Sales].[P_Orders]
-REORGANIZE Partition = 8
-```
+	```sql
+	ALTER INDEX [PK_Sales_P_Orders]
+	ON [Sales].[P_Orders]
+	REORGANIZE Partition = 8
+	```
 
 1. Reorganize all partitions of [Sales].[P_Orders]
 
-```sql
-ALTER INDEX [PK_Sales_P_Orders]
-ON [Sales].[P_Orders]
-REORGANIZE 
-```
+	```sql
+	ALTER INDEX [PK_Sales_P_Orders]
+	ON [Sales].[P_Orders]
+	REORGANIZE 
+	```
 
 ### 2.8 Partitioned tables and filtered indexes
 
@@ -1067,6 +1067,162 @@ GO
 
 ### Demo 5. Partitioning and Filtered Indexes
 
+Suppose that your application only allows you to list the orders for a customer for the last sixty days so, it does not make sense to index that all table by customerId
+
+>NOTE: In the demo, a fixed date is used and not getdate() because the table only contains records up to 2016-06-01
+
+```sql
+USE [WideWorldImporters]
+go
+
+-- Include Actual Execution Plan (Ctrl-M)
+
+set statistics io on
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
+```
+
+This query uses an Index Seek operator, a reduced number of logical reads and due to partition elimination, it is quite efficient
+
+Look at the Actual Number of Rows and the Estimated Number of Rows, not quite good
+
+See how much space the index uses with the following script
+
+```sql
+SELECT i.[name] AS IndexName ,SUM(s.[used_page_count]) * 8 AS IndexSizeKB
+FROM sys.dm_db_partition_stats AS s
+INNER JOIN sys.indexes AS i ON s.[object_id] = i.[object_id]
+    AND s.[index_id] = i.[index_id]
+AND i.object_id = object_id('Sales.P_Orders')
+WHERE i.name = 'FK_Sales_P_Orders_CustomerID'
+GROUP BY i.[name]
+GO
+```
+
+This index covers all data in the table but we only search rows for the last sixty days 
+
+How to improve it? 
+Delete the original index and create three indexes, covering the last three months
+
+```sql
+DROP INDEX [FK_Sales_P_Orders_CustomerID] ON [Sales].[P_Orders]
+GO
+
+CREATE NONCLUSTERED INDEX [FI_Sales_P_Orders_CustomerID_2016_05] ON [Sales].[P_Orders]
+(	[CustomerID] ASC	)
+WHERE OrderDate >= '2016-05-01' and OrderDate < '2016-06-01'
+ON [PS_SalesOrder_MONTHLY](OrderDate)
+GO
+
+CREATE NONCLUSTERED INDEX [FI_Sales_P_Orders_CustomerID_2016_04] ON [Sales].[P_Orders]
+(	[CustomerID] ASC	)
+WHERE OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
+ON [PS_SalesOrder_MONTHLY](OrderDate)
+GO
+
+CREATE NONCLUSTERED INDEX [FI_Sales_P_Orders_CustomerID_2016_03] ON [Sales].[P_Orders]
+(	[CustomerID] ASC	)
+WHERE OrderDate >= '2016-03-01' and OrderDate < '2016-04-01'
+ON [PS_SalesOrder_MONTHLY](OrderDate)
+GO
+```sql
+
+Run the same query again
+
+```sql
+DBCC FREEPROCCACHE
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
+```
+
+Look at the Actual Number of Rows and the Estimated Number of Rows.  
+- Do SQL Server can make better estimations?
+- Does the query do less logical read?
+
+See how much space the index uses with the following script
+
+```sql
+SELECT i.[name] AS IndexName ,SUM(s.[used_page_count]) * 8 AS IndexSizeKB
+FROM sys.dm_db_partition_stats AS s
+INNER JOIN sys.indexes AS i ON s.[object_id] = i.[object_id]
+    AND s.[index_id] = i.[index_id]
+AND i.object_id = object_id('Sales.P_Orders')
+WHERE i.name like 'FI_Sales_P_Orders_CustomerID%'
+GROUP BY i.[name]
+GO
+```
+
+Now less space is used for indexes
+
+
+Do the same search but using variables
+
+```sql
+DBCC FREEPROCCACHE
+
+declare @fecha_inicial date = '2016-04-01'
+declare @fecha_final date = '2016-05-01'
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
+```sql
+
+Notice that the estimation is not that good and the filtered index is not used. why?
+Depending the escenario insted of creating three indexes, you can crete a single index for the last 4 months.. The only way to know the best option is to create them and tests querys and compare execution plans
+
+Use the option RECOMPILE
+
+```sql
+declare @fecha_inicial date = '2016-04-01'
+declare @fecha_final date = '2016-05-01'
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
+OPTION (RECOMPILE)
+```
+
+The query uses the filtered index only when you use RECOMPILE, Why?
+
+Expand the range of search
+
+```sql
+DBCC FREEPROCCACHE
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
+```
+
+Notice that you do not use filtered indexes and SQL scans the table even when the two indexes (combined) cover the range. Why?
+
+Is there anything you can do to improve performance using filtered indexes in this scenario? Think of maintenance effors
+
+Just to leave the database as it as originally execute the following commands
+
+```sql
+CREATE NONCLUSTERED INDEX [FK_Sales_P_Orders_CustomerID] ON [Sales].[P_Orders]
+( [CustomerID] ASC )
+ON [PS_SalesOrder_MONTHLY](OrderDate)
+GO
+DROP INDEX [FI_Sales_P_Orders_CustomerID_2016_03] ON [Sales].[P_Orders]
+GO
+DROP INDEX [FI_Sales_P_Orders_CustomerID_2016_04] ON [Sales].[P_Orders]
+GO
+DROP INDEX [FI_Sales_P_Orders_CustomerID_2016_05] ON [Sales].[P_Orders]
+GO
+```
+
 ### 2.9 Partitioned tables and filtered statistics
 
 If you have an index on the whole table, it is possible that its statistic is not that precise due to the limitation of 200 steps on the histogram.
@@ -1089,7 +1245,167 @@ WITH FULLSCAN
 ```
 
 ### Demo 6. Partitioning and Filtered Statistics
-	
+
+Supose that your application only allows you to list the of orders for a customer for the last sixty days
+
+>NOTE: In the demo, a fixed date is used and not getdate() because the table only contains records up to 2016-06-01
+
+```sql
+USE [WideWorldImporters]
+go
+
+-- NOTE: Enable the trace flag based on your SQL Server version
+
+--DBCC TRACEON(2363,3604,-1) -- For SQL Server 2014+
+--DBCC TRACEON(9204,3604,-1) -- For SQL Server 2012
+-- NOTE: We use a fixed date and not getdate() because
+--       the table conly contains records up to 2016-06-01
+
+-- Include Actual Execution Plan (Ctrl-M)
+
+set statistics io on
+
+DBCC FREEPROCCACHE
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
+```
+
+This query uses an Index Seek operator, a reduced number of logical reads and due to partition elimination, it is quite efficient
+
+However, look at the Actual Number of Rows and the Estimated Number of Rows
+
+You can check the Message tab to see which histograms were loaded  and use the following query to see existing statitics on the table
+
+```sql
+select * from sys.stats
+where object_id = object_id ('[Sales].[P_Orders]')
+```
+
+To get better estimations, lets create filtered statistics  for the last three months (3 partitions)
+
+```sql
+CREATE STATISTICS [STAT_Sales_P_Order_CustomerID_2016_05] ON [Sales].[P_Orders] 
+([CustomerID] )  
+WHERE ( OrderDate >= '2016-05-01' and OrderDate < '2016-06-01' )
+WITH FULLSCAN
+
+CREATE STATISTICS [STAT_Sales_P_Order_CustomerID_2016_04] ON [Sales].[P_Orders] 
+([CustomerID] )  
+WHERE ( OrderDate >= '2016-04-01' and OrderDate < '2016-05-01' )
+WITH FULLSCAN
+
+CREATE STATISTICS [STAT_Sales_P_Order_CustomerID_2016_03] ON [Sales].[P_Orders] 
+([CustomerID] )  
+WHERE ( OrderDate >= '2016-03-01' and OrderDate < '2016-04-01' )
+WITH FULLSCAN
+```
+
+Run the query again
+
+```sql
+DBCC FREEPROCCACHE
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
+```
+
+Look at the Actual Number of Rows and the Estimated Number of Rows. Can SQL Server make better estimations?
+
+You can check the Message tab to see which histograms were loaded. Notice that the filtered statistic for April 2016 was loaded
+
+```sql
+select * from sys.stats
+where object_id = object_id ('[Sales].[P_Orders]')
+```
+
+Execute the original query but using variables
+
+```sql
+DBCC FREEPROCCACHE
+
+declare @fecha_inicial date = '2016-04-01'
+declare @fecha_final date = '2016-05-01'
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
+GO
+```
+
+Notice that the estimation is not that good.
+You can check the Message tab to see which histograms were loaded. No statistic was loaded (or maybe a system generated statistic). Why?
+
+Use the option RECOMPILE
+
+```sql
+DBCC FREEPROCCACHE
+
+declare @fecha_inicial date = '2016-04-01'
+declare @fecha_final date = '2016-05-01'
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
+option (recompile)
+```
+
+You get better estimations, Why?
+
+Notice that the filtered statistic for April 2016 was loaded
+
+```sql
+select * from sys.stats
+where object_id = object_id ('[Sales].[P_Orders]')
+```
+
+Expand the range of search
+
+```sql
+DBCC FREEPROCCACHE
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
+```
+
+Notice that the estimation is not that good.
+You can check the Message tab to see which histograms were loaded, The filtered statistics were not loaded even when the three statistics (combined) cover the range. Why?
+
+To get better estimations, create filtered statistics for the last Quarter
+
+```sql
+CREATE STATISTICS [STAT_Sales_P_Order_CustomerId2016_Q2] ON [Sales].[P_Orders] 
+([CustomerID] )  
+WHERE ( OrderDate >= '2016-04-01' and OrderDate < '2016-07-01' )
+WITH FULLSCAN
+```
+
+Run the query again
+
+```sql
+DBCC FREEPROCCACHE
+
+SELECT * 
+FROM [Sales].[P_Orders]
+WHERE CustomerID = 404
+AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
+```
+
+Notice that you have better estimation. Check the message tab and confirm you are now using the filterd statistic for the quarter
+
+```sql
+select * from sys.stats
+where object_id = object_id ('[Sales].[P_Orders]')
+```
+
 ### 2.10 Lock Scalation on partitioned tables
 
 The Database Engine does not escalate row or key-range locks to page locks or partition locks, but escalates them directly to table locks
@@ -1115,6 +1431,175 @@ If the table is not partitioned, the lock escalation will be done to the TABLE g
 - DISABLE: Prevents lock escalation in most cases. Table-level locks are not completely disallowed. For example, when you are scanning a table that has no clustered index under the serializable isolation level, Database Engine must take a table lock to protect data integrity. 
 
 ### Demo 7. Lock Scalation on partitioned tables
+
+See the locks held when doing a Select operation
+
+```sql
+Set Transaction Isolation Level Repeatable Read
+
+USE [WideWorldImporters]
+go
+
+BEGIN TRANSACTION
+
+	SELECT * FROM  [Sales].[P_Orders]
+	WHERE OrderDate = '2016-04-14' 
+
+	Select * from sys.dm_tran_locks 
+	where request_session_id = @@SPID 
+	order by resource_type
+```
+
+- How many locks do you see? 
+- Why do you see PAGE KEY, PAGE, OBJECT and DATABASE locks 
+
+```sql
+ROLLBACK
+```
+
+Read more than 5000 rows
+
+```sql
+BEGIN TRANSACTION
+
+	SELECT * FROM  [Sales].[P_Orders]
+	WHERE OrderDate > '2016-02-14' 
+
+	Select * from sys.dm_tran_locks 
+	where request_session_id = @@SPID 
+	order by resource_type
+```
+
+Even when there more than 5000 locks, there are not 5000 locks on a single partition, so there is no lock scalation to table
+
+```sql
+ROLLBACK
+```
+
+For demo purposes, load around 50000 rows on a sigle partition
+
+```sql
+DECLARE @rows_in_partition int = 1
+
+SELECT @rows_in_partition = COUNT(*) FROM [Sales].[P_Orders]
+WHERE OrderDate>='2015-07-01' AND OrderDate < '2015-08-01'
+
+while  @rows_in_partition < 50000
+BEGIN
+
+	INSERT INTO [Sales].[P_Orders]
+	SELECT O.[OrderID] + 100000 + @rows_in_partition
+      ,O.[CustomerID]
+      ,O.[SalespersonPersonID]
+      ,O.[PickedByPersonID]
+      ,O.[ContactPersonID]
+      ,NULL --[BackorderOrderID]
+      ,NULL --[BackorderOrderDate]
+      ,O.[OrderDate]
+      ,O.[ExpectedDeliveryDate]
+      ,O.[CustomerPurchaseOrderNumber]
+      ,O.[IsUndersupplyBackordered]
+      ,O.[Comments]
+      ,O.[DeliveryInstructions]
+      ,O.[InternalComments]
+      ,O.[PickingCompletedWhen]
+      ,O.[LastEditedBy]
+      ,O.[LastEditedWhen]
+	  ,NEWID()
+  FROM [Sales].[Orders] O
+  WHERE OrderDate>='2015-07-01' AND OrderDate < '2015-08-01'
+  Order by OrderID DESC
+
+  SELECT @rows_in_partition = COUNT(*) FROM [Sales].[P_Orders]
+  WHERE OrderDate>='2015-07-01' AND OrderDate < '2015-08-01'
+
+END
+```
+ 
+Read more than 5000 locks from a single partition
+
+```sql
+BEGIN TRANSACTION
+
+select * FROM  [Sales].[P_Orders]
+WHERE OrderDate >= '2015-07-03'  and OrderDate < '2015-07-15' 
+
+Select * from sys.dm_tran_locks 
+where request_session_id = @@SPID 
+order by resource_type
+
+```
+
+Notice that olny have 2 locks now. Lhe lock with resource_type = OBJECT is the lock a the table level
+
+In another session execute the following two sentences
+
+```sql
+select * FROM  [Sales].[P_Orders]
+WHERE OrderId  = 100
+
+delete FROM  [Sales].[P_Orders]
+WHERE OrderId  = 100
+```
+
+Notice that the query gets blocked even when the row you are trying to delete is in other partition, Why?		
+
+Stop the query on the second session and close it
+
+```sql
+ROLLBACK
+```
+
+Change the scalation mode for the table to AUTO
+
+```sql
+ALTER TABLE [Sales].[P_Orders]SET (LOCK_ESCALATION = AUTO);  
+GO  
+```
+
+Execute the same query and see how the behavior changes
+
+```sql
+BEGIN TRANSACTION
+
+select * FROM  [Sales].[P_Orders]
+WHERE OrderDate >= '2015-07-03'  and OrderDate < '2015-07-15' 
+
+Select * from sys.dm_tran_locks 
+where request_session_id = @@SPID 
+order by resource_type
+```
+
+Notice that now you have 3 locks. The lock with resource_type = HOBT is the lock a the partition level
+	
+
+In another session execute the following two sentences
+
+```sql
+select * FROM  [Sales].[P_Orders]
+WHERE OrderId  = 101
+
+delete FROM  [Sales].[P_Orders]
+WHERE OrderId  = 101
+```
+
+Notice that the query gets blocked even when the rou you are trying to delete is in other partition, Why?		
+
+Stop the query
+	
+On the second session, execute the following query to try to delete the record making a small change to the query 
+
+```sql
+delete FROM  [Sales].[P_Orders]
+WHERE OrderId  = 101
+and OrderDate = '2013-01-02'
+```
+
+Notice that now you can delete the row, Why?
+
+```sql
+ROLLBACK
+``'
 
 ## 3. Data compression
 
@@ -1165,6 +1650,189 @@ You must decide which compression mode to use: row or page
 - If you must compress data that changes constantly use ROW to reduce performance penalty.
 
 ### Demo 8. Partitioning and data compression
+
+
+Estimate the compression savings for the clustered index using both compression levels
+
+```sql
+USE [WideWorldImporters]
+GO
+EXEC sp_estimate_data_compression_savings 'Sales', 'Orders', 1, NULL, 'ROW' ;
+GO
+EXEC sp_estimate_data_compression_savings 'Sales', 'Orders', 1, NULL, 'PAGE' ;
+GO
+```sql
+
+- Which compression level should I use for the clustered index?
+
+See IO generated by each level of compression
+
+- How much IO is generated if the tables is read completly without compression?
+
+	```sql
+	SET STATISTICS IO ON
+	SELECT * FROM [Sales].[P_Orders]
+	```sql
+
+	You get around 1500 logical reads (if you completed previous demos) 
+
+- How much IO is generated if the tables is read completly using ROW compression?
+
+	```sql
+	alter index [PK_Sales_P_Orders] on [Sales].[P_Orders] 
+	REBUILD with (data_compression = ROW)
+
+	SELECT * FROM [Sales].[P_Orders]
+	```sql
+
+	You get around 1135 logical reads (if you completed previous demos) 
+
+- How much IO is generated if the tables is read completly using PAGE compression?
+
+	```sql
+	alter index [PK_Sales_P_Orders] on [Sales].[P_Orders] 
+	REBUILD with (data_compression = PAGE)
+
+	SELECT * FROM [Sales].[P_Orders]
+	```sql
+
+	You get around 839 logical reads (if you completed previous demos) 
+
+To continue with the demo, uncompress the table first by executing:
+
+```sql
+alter index [PK_Sales_P_Orders] on [Sales].[P_Orders] 
+REBUILD with (data_compression = NONE)
+```sql
+
+You should you the same analysis for each Index and select the best compression level for it
+
+```sql
+EXEC sp_estimate_data_compression_savings 'Sales', 'P_Orders', 2, NULL, 'ROW' ;
+GO
+EXEC sp_estimate_data_compression_savings 'Sales', 'P_Orders', 2, NULL, 'PAGE' ;
+GO
+```sql
+
+ Which compression level should I use for the index_id = 2?
+
+Compress some specific partitions of index_id=1
+
+```sql
+alter index [PK_Sales_P_Orders]  on [Sales].[P_Orders] 
+REBUILD PARTITION=2 with (data_compression = ROW)
+go
+alter index [PK_Sales_P_Orders] on [Sales].[P_Orders] 
+REBUILD PARTITION=3 with (data_compression = PAGE)
+go
+```sql
+
+Execute:
+
+```sql
+SELECT
+	OBJECT_NAME(p.object_id) AS ObjectName, 
+	i.name AS IndexName, 
+	p.index_id AS IndexID, 
+	ds.name AS PartitionScheme, 
+	p.partition_number AS PartitionNumber, 
+	p.data_compression_desc as compression_level,
+	fg.name AS FileGroupName, 
+	prv_left.value AS LowerBoundaryValue, 
+	prv_right.value AS UpperBoundaryValue, 
+	CASE pf.boundary_value_on_right WHEN 1 THEN 'RIGHT' ELSE 'LEFT' END AS PartitionFunctionRange, 
+	p.rows AS Rows
+FROM
+	sys.partitions AS p INNER JOIN
+	sys.indexes AS i ON i.object_id = p.object_id AND i.index_id = p.index_id INNER JOIN
+	sys.data_spaces AS ds ON ds.data_space_id = i.data_space_id INNER JOIN
+	sys.partition_schemes AS ps ON ps.data_space_id = ds.data_space_id INNER JOIN
+	sys.partition_functions AS pf ON pf.function_id = ps.function_id INNER JOIN
+	sys.destination_data_spaces AS dds2 ON dds2.partition_scheme_id = ps.data_space_id AND dds2.destination_id = p.partition_number INNER JOIN
+	sys.filegroups AS fg ON fg.data_space_id = dds2.data_space_id LEFT OUTER JOIN
+	sys.partition_range_values AS prv_left ON ps.function_id = prv_left.function_id AND prv_left.boundary_id = p.partition_number - 1 LEFT OUTER JOIN
+	sys.partition_range_values AS prv_right ON ps.function_id = prv_right.function_id AND prv_right.boundary_id = p.partition_number
+WHERE
+p.OBJECT_id in ( OBJECT_id ('[Sales].[P_Orders]') )
+AND p.index_id = 1
+order by p.object_id, p.index_id, p.partition_number
+```
+
+Take a look of compression_level column. Notice that you can have different compression level on different partitoins on the same index
+
+Execute:
+
+```sql
+SELECT
+	OBJECT_NAME(p.object_id) AS ObjectName, 
+	i.name AS IndexName, 
+	p.index_id AS IndexID, 
+	ds.name AS PartitionScheme, 
+	p.partition_number AS PartitionNumber, 
+	p.data_compression_desc as compression_level,
+	fg.name AS FileGroupName, 
+	prv_left.value AS LowerBoundaryValue, 
+	prv_right.value AS UpperBoundaryValue, 
+	CASE pf.boundary_value_on_right WHEN 1 THEN 'RIGHT' ELSE 'LEFT' END AS PartitionFunctionRange, 
+	p.rows AS Rows
+FROM
+	sys.partitions AS p INNER JOIN
+	sys.indexes AS i ON i.object_id = p.object_id AND i.index_id = p.index_id INNER JOIN
+	sys.data_spaces AS ds ON ds.data_space_id = i.data_space_id INNER JOIN
+	sys.partition_schemes AS ps ON ps.data_space_id = ds.data_space_id INNER JOIN
+	sys.partition_functions AS pf ON pf.function_id = ps.function_id INNER JOIN
+	sys.destination_data_spaces AS dds2 ON dds2.partition_scheme_id = ps.data_space_id AND dds2.destination_id = p.partition_number INNER JOIN
+	sys.filegroups AS fg ON fg.data_space_id = dds2.data_space_id LEFT OUTER JOIN
+	sys.partition_range_values AS prv_left ON ps.function_id = prv_left.function_id AND prv_left.boundary_id = p.partition_number - 1 LEFT OUTER JOIN
+	sys.partition_range_values AS prv_right ON ps.function_id = prv_right.function_id AND prv_right.boundary_id = p.partition_number
+WHERE
+p.OBJECT_id in ( OBJECT_id ('[Sales].[P_Orders]') )
+AND p.partition_number = 2
+order by p.object_id, p.partition_number, i.index_id
+```sql
+
+and take a look of compression_level column. Notice that the same partition for different indexes can have different compression level
+
+You can also compress several partitions of index_id=1 at once
+
+```sql
+alter index [PK_Sales_P_Orders]  on [Sales].[P_Orders] 
+REBUILD PARTITION = ALL with (data_compression = PAGE ON PARTITIONS (2 to 40))
+```
+
+Execute 
+
+```sql
+SELECT
+	OBJECT_NAME(p.object_id) AS ObjectName, 
+	i.name AS IndexName, 
+	p.index_id AS IndexID, 
+	ds.name AS PartitionScheme, 
+	p.partition_number AS PartitionNumber, 
+	p.data_compression_desc as compression_level,
+	fg.name AS FileGroupName, 
+	prv_left.value AS LowerBoundaryValue, 
+	prv_right.value AS UpperBoundaryValue, 
+	CASE pf.boundary_value_on_right WHEN 1 THEN 'RIGHT' ELSE 'LEFT' END AS PartitionFunctionRange, 
+	p.rows AS Rows
+FROM
+	sys.partitions AS p INNER JOIN
+	sys.indexes AS i ON i.object_id = p.object_id AND i.index_id = p.index_id INNER JOIN
+	sys.data_spaces AS ds ON ds.data_space_id = i.data_space_id INNER JOIN
+	sys.partition_schemes AS ps ON ps.data_space_id = ds.data_space_id INNER JOIN
+	sys.partition_functions AS pf ON pf.function_id = ps.function_id INNER JOIN
+	sys.destination_data_spaces AS dds2 ON dds2.partition_scheme_id = ps.data_space_id AND dds2.destination_id = p.partition_number INNER JOIN
+	sys.filegroups AS fg ON fg.data_space_id = dds2.data_space_id LEFT OUTER JOIN
+	sys.partition_range_values AS prv_left ON ps.function_id = prv_left.function_id AND prv_left.boundary_id = p.partition_number - 1 LEFT OUTER JOIN
+	sys.partition_range_values AS prv_right ON ps.function_id = prv_right.function_id AND prv_right.boundary_id = p.partition_number
+WHERE
+p.OBJECT_id in ( OBJECT_id ('[Sales].[P_Orders]') )
+AND p.index_id = 1
+order by p.object_id, p.index_id, p.partition_number
+```
+
+and take a look of compression_level column to see the final state of the index_id = 1
+
 
 ## 4. Table Partitioning and Data Compression in Azure SQL Database
 
