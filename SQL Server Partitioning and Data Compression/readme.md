@@ -1,5 +1,32 @@
 # SQL Server Partitioning and Data Compression
 
+- [SQL Server Partitioning and Data Compression](#sql-server-partitioning-and-data-compression)
+	- [1. Setting up the environment](#1-setting-up-the-environment)
+	- [2.Table Partitioning](#2table-partitioning)
+		- [2.2 Why to partition?](#22-why-to-partition)
+		- [2.3 Components](#23-components)
+		- [2.4 Aligned Indexes vs Non aligned Indexes](#24-aligned-indexes-vs-non-aligned-indexes)
+		- [Demo 1. Creaating a partitioned table](#demo-1-creaating-a-partitioned-table)
+		- [2.5 Partitioning and Query Performance](#25-partitioning-and-query-performance)
+		- [Demo 2. Partitioning and Query Performance](#demo-2-partitioning-and-query-performance)
+		- [2.6 Partitioning and data management](#26-partitioning-and-data-management)
+			- [Deleting partitions - Truncate table with partition (SQL Server 2016)](#deleting-partitions---truncate-table-with-partition-sql-server-2016)
+			- [Creating partitions - Split Operation](#creating-partitions---split-operation)
+		- [Demo 3. Partitioning and Data Management](#demo-3-partitioning-and-data-management)
+		- [2.7 Partitioning and index maintenance](#27-partitioning-and-index-maintenance)
+		- [Demo 4. Partitioning and Index Maintenance](#demo-4-partitioning-and-index-maintenance)
+		- [2.8 Partitioned tables and filtered indexes](#28-partitioned-tables-and-filtered-indexes)
+		- [Demo 5. Partitioning and Filtered Indexes](#demo-5-partitioning-and-filtered-indexes)
+		- [2.9 Partitioned tables and filtered statistics](#29-partitioned-tables-and-filtered-statistics)
+		- [Demo 6. Partitioning and Filtered Statistics](#demo-6-partitioning-and-filtered-statistics)
+		- [2.10 Lock Scalation on partitioned tables](#210-lock-scalation-on-partitioned-tables)
+		- [Demo 7. Lock Scalation on partitioned tables](#demo-7-lock-scalation-on-partitioned-tables)
+	- [3. Data compression](#3-data-compression)
+		- [3.1 Compression Levels](#31-compression-levels)
+		- [3.2 When to use data compression?](#32-when-to-use-data-compression)
+		- [Demo 8. Partitioning and data compression](#demo-8-partitioning-and-data-compression)
+	- [4. Table Partitioning and Data Compression in Azure SQL Database](#4-table-partitioning-and-data-compression-in-azure-sql-database)
+
 > **IMPORTANT:** Many images and text are obtained from Microsoft public documention for SQL Server [Partitioned tables and indexes](https://docs.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes)
 
 ## 1. Setting up the environment
@@ -118,7 +145,7 @@ The table **SalesOrder** will be partiioned considering that:
 
 - Filegroups will be reused every three months. 
 
-  ¿Why? It it just an example. Consider it was the result of previous analysis, this is just one way to define FGs and save as much space as possible when data compression is implemented
+  ï¿½Why? It it just an example. Consider it was the result of previous analysis, this is just one way to define FGs and save as much space as possible when data compression is implemented
 
 - The original table contains data from January 2013 to May 2016
 
@@ -768,13 +795,18 @@ Compare changes on the execution plan and logical reads when querying partitione
 1. Add the partition column in the WHERE clause to the previous query
 
 	```sql
-	select * from [Sales].[Orders]
-	where OrderId = 73548
-	and OrderDate = '2016-05-31'
+	USE [WideWorldImporters]
+	GO
 
-	select * from [Sales].[P_Orders]
-	where OrderId = 73548
-	and OrderDate = '2016-05-31'
+	set statistics io on
+
+	SELECT * FROM  [Sales].[Orders]
+	WHERE OrderId = 73548
+	AND OrderDate = '2016-05-31'
+
+	SELECT * FROM  [Sales].[P_Orders]
+	WHERE OrderId = 73548
+	AND OrderDate = '2016-05-31'
 	```
 
 	![Lab10011](Media/lab10011.png)
@@ -785,26 +817,34 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	```sql
 	-- top
-	select top 1 * from [Sales].[Orders]
-	where OrderId = 73548
-	order by OrderId
 
-	select top 1 * from [Sales].[P_Orders]
-	where OrderId = 73548
-	order by OrderId
+	set statistics io on
+
+	SELECT TOP 1 * from [Sales].[Orders]
+	WHERE OrderId = 73548
+	ORDER BY OrderId
+
+	SELECT TOP 1  * from [Sales].[P_Orders]
+	WHERE OrderId = 73548
+	ORDER BY OrderId
    ```
 
-	The query reads more pages using the partitioned table even when both queries look using the first column of the clustered index, Why?
+	![Lab10012](Media/lab10012.png)
+
+	The query reads more pages using the partitioned table even when both queries look using the first column of the clustered index. The reason is that SQL Server has to check all partitions of the table and the combined size of the internal strcutures for all partitions is bigger than the internal structure for the unpartition table. 
+
+	You will see the same situation when using MAX and MIN
 
 	```sql
 	-- MAX
-	select max(OrderId) from [Sales].[Orders]
+	set statistics io on
 
-	select max(OrderId) from [Sales].[P_Orders]
+	SELECT max(OrderId) FROM [Sales].[Orders]
+
+	SELECT max(OrderId) FROM [Sales].[P_Orders]
 	```
 
-	The query reads more pages using the partitioned table even when both queries are looking using the first column of the clustered index, Why?
-
+	![Lab10013](Media/lab10013.png)
 
 	```sql
 	-- MIN
@@ -813,7 +853,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 	select min(OrderId) from [Sales].[P_Orders]
 	```
 
-	The query reads more pages using the partitioned table even when both are looking using the first column of the clustered index, Why?
+	![Lab10013](Media/lab10013.png)
 
 
 ### 2.6 Partitioning and data management
@@ -1099,7 +1139,7 @@ WITH ( ONLINE = ON )
 
 When you use partitioning to handle historical data, it is usual that you execute queries on the single partition that contains live data and other queries on the partitions that contain historical data.
 
-In this scenario, it makes no sense to create a index on the whole table when you only need it to query data on some partitions. – This is valid even for non partitioned tables
+In this scenario, it makes no sense to create a index on the whole table when you only need it to query data on some partitions. ï¿½ This is valid even for non partitioned tables
 
 One advantage is that you also save space as the index only contains entries for data you are actually accessing. It is also possible that the statistics for the index are more precise as less data in covered by the statistic. 
 
