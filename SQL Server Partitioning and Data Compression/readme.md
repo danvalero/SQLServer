@@ -96,6 +96,20 @@ The data of partitioned tables and indexes is divided into units that can be spr
 
  ![Components](Media/components.png)
 
+### 2.4 Aligned Indexes vs Non aligned Indexes
+
+- Aligned index
+
+  An index that is built on the same partition scheme as its corresponding table.
+  
+  When a table and its indexes are in alignment, SQL Server can switch partitions quickly and efficiently while maintaining the partition structure of both the table and its indexes. 
+
+- Nonaligned index:
+
+  An index partitioned independently from its corresponding table. That is, the index has a different partition scheme or is placed on a separate filegroup from the base table. 
+
+  >Creating and rebuilding nonaligned indexes on a table with more than 1,000 partitions is possible, but is not supported. Doing so may cause degraded performance or excessive memory consumption during these operations. We recommend using only aligned indexes when the number of partitions exceed 1,000. 
+
 ### Demo 1. Creaating a partitioned table
 
 The table **SalesOrder** will be partiioned considering that:
@@ -181,17 +195,30 @@ The table **SalesOrder** will be partiioned considering that:
 	GO
 	```
 
+1. Get the minimum and maximum value in the unpartitioined table for the partition colum 
+
+   ```sql
+	SELECT min(OrderDate) as min_orderdate
+		 , max(OrderDate) as max_orderdate
+	FROM [Sales].[Orders]
+	```
+
+	![Lab10001](Media/lab10001.png)
+
+	This information is required to indentify the first and last range value for the Parition Funtion
+
 1. Calculate the number of rows per month in the unpartitioned table to identify partition boundaries
 
-    ```sql
-	 USE [WideWorldImporters]
-	 GO
-	 
-	 select year(OrderDate), month(OrderDate), count(*)  
-	 from [Sales].[Orders]
- 	 group by year(OrderDate), month(OrderDate)
-	 order by year(OrderDate), month(OrderDate)
-	 ```
+   ```sql
+	USE [WideWorldImporters]
+	GO
+ 
+	SELECT year(OrderDate) as year, month(OrderDate) as month, count(*)  
+	FROM [Sales].[Orders]
+	GROUP BY year(OrderDate), month(OrderDate)
+	ORDER BY year(OrderDate), month(OrderDate)
+	GO
+	```
 
 1. Create the partition function for Sales.Orders just for existing months
 
@@ -326,9 +353,11 @@ The table **SalesOrder** will be partiioned considering that:
 	GO
 	```
 
+	![Lab10002](Media/lab10002.png)
+
    >You get an error. Why?
   
-	Consider that this table has a self reference
+	Consider that this table has a self reference (FK_Sales_Orders_BackorderOrderID_Sales_Orders)
    - What is the impact of this limitation?
    - What can I do to force uniqueness of OrderID?
 
@@ -342,7 +371,7 @@ The table **SalesOrder** will be partiioned considering that:
 		[PickedByPersonID] [int] NULL,
 		[ContactPersonID] [int] NOT NULL,
 		[BackorderOrderID] [int] NULL,
-		[BackorderOrderDate] [date] NULL, -- This new column is necessary because the PK changed
+		[BackorderOrderDate] [date] NULL, -- This new column is necessary because the PK must be changed to include OrderDate
 		[OrderDate] [date] NOT NULL,
 		[ExpectedDeliveryDate] [date] NOT NULL,
 		[CustomerPurchaseOrderNumber] [nvarchar](20) NULL,
@@ -354,19 +383,18 @@ The table **SalesOrder** will be partiioned considering that:
 		[LastEditedBy] [int] NOT NULL,
 		[LastEditedWhen] [datetime2](7) NOT NULL,
 		[rowguid] [uniqueidentifier] ROWGUIDCOL  NOT NULL -- this column does not exists in the original table. It is create for demostration pourposes
-	 CONSTRAINT [PK_Sales_P_Orders] PRIMARY KEY CLUSTERED 
+	CONSTRAINT [PK_Sales_P_Orders] PRIMARY KEY CLUSTERED 
 	(	[OrderID] ASC,
 		[OrderDate]
 	)
 	ON [PS_SalesOrder_MONTHLY](OrderDate)
 	)
-	GO
 	```
 
-	Create constraints CHECK, DEFAULT and FKs
+	Create other constraints CHECK, DEFAULT and FKs exisinting in unpartitioned table
 
 	```sql
-	--This FK changes its definition because the PK changed, and it is a self-reference
+	-- IMPORTANT: This FK changes its definition because the PK changed, and it is a self-reference
 
 	ALTER TABLE [Sales].[P_Orders]  WITH CHECK ADD  CONSTRAINT [FK_Sales_P_Orders_BackorderOrderID_Sales_P_Orders] FOREIGN KEY([BackorderOrderID],[BackorderOrderDate])
 	REFERENCES [Sales].[P_Orders] ([OrderID],[OrderDate])
@@ -414,7 +442,6 @@ The table **SalesOrder** will be partiioned considering that:
 	```
 
 	To see details about the partitions on the table execute:
-		-- Discuss what you see with participants
 
 	```sql
 	SELECT
@@ -446,9 +473,7 @@ The table **SalesOrder** will be partiioned considering that:
 	ORDER BY p.object_id, p.index_id, p.partition_number
 	```
 
-	Create aligned indexes 
-
-   >Create indexes one by one to discuss restrictions 
+	Create aligned indexes by executing:
 
 	```sql
 	CREATE NONCLUSTERED INDEX [FK_Sales_P_Orders_ContactPersonID] ON [Sales].[P_Orders]
@@ -498,8 +523,6 @@ The table **SalesOrder** will be partiioned considering that:
 	ORDER BY p.object_id, p.partition_number, i.index_id
 	```
 
-   -- Discuss what you see with participants
-
 	The following index does not exists in the original table but is created to show a concept
 
 	```sql
@@ -509,7 +532,11 @@ The table **SalesOrder** will be partiioned considering that:
 	GO
 	```
 
-	>You get an error. Why?
+	>You get an error beacuse the partition columns for a unique index must be a subset of the index key. Similar issue when creating the Primary Key without the partition column
+
+	- What problems in data integrity can this create?
+   - Does it make sense to create this UNIQUE index?
+   - What can I do to force data uniqueness?
 
 	```sql
 	CREATE UNIQUE NONCLUSTERED INDEX [AK_Sales_P_Order_rowguid] ON [Sales].[P_Orders]
@@ -521,21 +548,16 @@ The table **SalesOrder** will be partiioned considering that:
 	GO
 	```
 
--- What problems in data integrity can this create?
--- Does it make sense to create this UNIQUE index?
--- What can I do to force data uniqueness?
-
-USE [WideWorldImporters]
-GO
-
 1. How to tell in which partition a row will fall
 
    Let's take a snigle row from the original non partitioned table
 
 	```sql
-	select top 1 * 
-	from sales.Orders
-	where OrderDate = '2013-04-02'
+	USE [WideWorldImporters]
+	GO
+	SELECT TOP 1 * 
+	FROM sales.Orders
+	WHERE OrderDate = '2013-04-02'
 	```
 
 	In which partition will the following row be inserted on Sales.P_Orders?
@@ -550,13 +572,17 @@ GO
 
 	The result is the partition that correspond to the value
 
-   You can see that a row for a different month falls in another partition 
+	![Lab10003](Media/lab10003.png)
+
+	You can see that a row for a different month falls in another partition 
 
 	```sql
-	select top 1 $partition.[PF_SalesOrder_MONTHLY](OrderDate) as partition, * 
-	from sales.Orders
-	where OrderDate = '2014-11-07'
+	SELECT TOP 1 $partition.[PF_SalesOrder_MONTHLY](OrderDate) as partition, * 
+	FROM sales.Orders
+	WHERE OrderDate = '2014-11-07'
 	```
+
+	![Lab10004](Media/lab10004.png)
 
 1. Load data from the original table Sales.Orders
 
@@ -642,28 +668,16 @@ GO
 	Check the column "rows" and compare with the number of rows per month in the original table Sales.Orders
 
 	```sql
-	select year(OrderDate), month(OrderDate), count(*)  
-	from sales.Orders
-	group by year(OrderDate), month(OrderDate)
-	order by year(OrderDate), month(OrderDate)
+	SELECT year(OrderDate) as year, month(OrderDate) as month, count(*)  
+	FROM [Sales].[Orders]
+	GROUP BY year(OrderDate), month(OrderDate)
+	ORDER BY year(OrderDate), month(OrderDate)
+	GO
 	```
 
+	![Lab10005](Media/lab10005.png)
+
 	Notice that the rows were assigned to the right partition based on the Order Date
-
-
-### 2.4 Aligned Indexes vs Non aligned Indexes
-
-- Aligned index
-
-  An index that is built on the same partition scheme as its corresponding table.
-  
-  When a table and its indexes are in alignment, SQL Server can switch partitions quickly and efficiently while maintaining the partition structure of both the table and its indexes. 
-
-- Nonaligned index:
-
-  An index partitioned independently from its corresponding table. That is, the index has a different partition scheme or is placed on a separate filegroup from the base table. 
-
-  >Creating and rebuilding nonaligned indexes on a table with more than 1,000 partitions is possible, but is not supported. Doing so may cause degraded performance or excessive memory consumption during these operations. We recommend using only aligned indexes when the number of partitions exceed 1,000. 
 
 ### 2.5 Partitioning and Query Performance
 
