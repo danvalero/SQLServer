@@ -697,39 +697,73 @@ Partitioning is widely used due to tis benefits, however keep in mind that:
 
 Compare changes on the execution plan and logical reads when querying partitioned tables and non-partitioned tables
 
+>Make sure you enable Include Actual Execution Plan (Ctrl-M)
+
 1. Search in both tables by the partition column for Sales.P_Orders
+
+	Query the unpartitioned table
 
 	```sql
 	USE [WideWorldImporters]
 	GO
 
-	-- Include Actual Execution Plan (Ctrl-M)
+	set statistics io on
+
+	SELECT * FROM [Sales].[Orders]
+	WHERE OrderDate = '2013-07-04'
+	```
+
+	Notice the query did 692 logical reads
+
+	![Lab10006](Media/lab10006.png)
+
+	the execution plan shows a Clustered Index Scan that read 73595 rows and the operator cost was 0.593125
+	![Lab10006](Media/lab10007.png)
+
+	Query the partitioned table
+
+	```sql
+	USE [WideWorldImporters]
+	GO
 
 	set statistics io on
 
-	-- Let's Search in both tables by the partition column for Sales.P_Orders
-	select * from [Sales].[Orders]
-	where OrderDate = '2013-07-04'
-
-	select * from [Sales].[P_Orders]
-	where OrderDate = '2013-07-04'
+	SELECT * FROM [Sales].[P_Orders]
+	WHERE OrderDate = '2013-07-04'
 	```
 
-   You read less pages using the partitioned table even when both queries scan the clustered index, Why?
+	Now, to get the result, only 25 pages are read. Big improvement.
 
-	Review the Cluster Index Scan Operator and the Actual Partition Count information
+	![Lab10008](Media/lab10008.png)
 
+	The execution plan also shows a Clustered Index Scan so how it is posible to get the same result with the same execution plan and at the same time to do less page reads
+	
+	Checking the details, the Clustered Index Scan that did only 1886 logical reads and the operator cost was 0.0215314, meaning this query is more efficient. Notice that the execution plan shows it was necessary to access one of the partition (so the Clustered Index Scan was don on only one partition and not the entire table)
+	
+	![Lab10007](Media/lab10009.png)
+	   
 1. Search in both tables by an indexed column other that the partition column for Sales.P_Orders
 
-	```sql
-	select * from [Sales].[Orders]
-	where OrderId = 73548
+	Query the unpartitioned table
 
-	select * from [Sales].[P_Orders]
-	where OrderId = 73548
+	```sql
+	USE [WideWorldImporters]
+	GO
+
+	set statistics io on
+
+	SELECT * FROM  [Sales].[Orders]
+	WHERE OrderId = 73548
+
+	SELECT * FROM  [Sales].[P_Orders]
+	WHERE OrderId = 73548
 	```
 
-	You read mores pages using the partitioned table even when both queries use a Clustered Index Seek, Why?
+	![Lab10010](Media/lab10010.png)
+
+	Notice the query on the unpartitioned table does less logical reads than the same query on the partitioned table
+
+	You read mores pages using the partitioned table even when both queries use a Clustered Index Seek. The reason is that SQL Server has to check all partitions of the table and the combined size of the internal strcutures for all partitions is bigger than the internal structure for the unpartition table
 
 1. Add the partition column in the WHERE clause to the previous query
 
@@ -743,7 +777,9 @@ Compare changes on the execution plan and logical reads when querying partitione
 	and OrderDate = '2016-05-31'
 	```
 
-	What changed?
+	![Lab10011](Media/lab10011.png)
+
+	Notice the query on the partitioned table does less logical reads than the same query on the unpartitioned table, as now SQL Serer was able to search for the ros by examining only the partitions that contained becuase the partition column is used in the WHERE clause in a way that partition elimination is possible
 
 1. See the behavior of the TOP, MIN y MAX functions
 
