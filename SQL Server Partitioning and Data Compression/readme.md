@@ -99,7 +99,7 @@ The data of partitioned tables and indexes is divided into units that can be spr
  
     ![Range Right](Media/range-right.png)
 
-    **Question:** If you decide to partition by a date value, which range type should you use? 
+    >**Question:** If you decide to partition by a date value, which range type should you use? 
 
     ```sql
 	 CREATE PARTITION FUNCTION PF_byMonth (datetime)
@@ -110,7 +110,7 @@ The data of partitioned tables and indexes is divided into units that can be spr
 
     ![Datetime Range](Media/datetime-range.png)
 
-	 **Answer:** XXX 
+	 >**Answer:** RANGE RIGHT is better in this case. Example: If you have to get the rows for 2016-02-01, using RANGE LEFT requires accessing 2 partitions (P2 and P3), using RANGE RIGHT requires to access just one partition (P3)
 
 - Partition Scheme
 
@@ -119,6 +119,8 @@ The data of partitioned tables and indexes is divided into units that can be spr
   The primary reason for placing your partitions on separate filegroups is to make sure that you can independently perform backup operations on partitions. This is because you can perform backups on individual filegroups. 
 
   You must create filegroups and datafiles before you create the partition scheme
+
+The three componets are shown below
 
  ![Components](Media/components.png)
 
@@ -143,8 +145,8 @@ The table **SalesOrder** will be partiioned considering that:
 - A monthly partition will be implemented.
 
 - Filegroups will be reused every three months. 
-
-  �Why? It it just an example. Consider it was the result of previous analysis, this is just one way to define FGs and save as much space as possible when data compression is implemented
+ 
+  Why? It it just an example. Consider it was the result of previous analysis, this is just one way to define FGs and save as much space as possible when data compression is implemented
 
 - The original table contains data from January 2013 to May 2016
 
@@ -231,7 +233,7 @@ The table **SalesOrder** will be partiioned considering that:
 
 	![Lab10001](Media/lab10001.png)
 
-	This information is required to indentify the first and last range value for the Parition Funtion
+	This information is required to indentify the first and last range value for the Partition Funtion
 
 1. Calculate the number of rows per month in the unpartitioned table to identify partition boundaries
 
@@ -381,13 +383,12 @@ The table **SalesOrder** will be partiioned considering that:
 
 	![Lab10002](Media/lab10002.png)
 
-   >You get an error. Why?
-  
-	Consider that this table has a self reference (FK_Sales_Orders_BackorderOrderID_Sales_Orders)
+   >You get an error. Partition columns for a unique index must be a subset of the index key. This is a SQL Server requiriment.  
    - What is the impact of this limitation?
    - What can I do to force uniqueness of OrderID?
-
-	Create the table adding the Partition Column in the Primary Key (UNIQUE Index)
+	- Consider that this table has a self reference (FK_Sales_Orders_BackorderOrderID_Sales_Orders)
+	
+	Create the table adding the Partition Column in the Primary Key (UNIQUE Index). As thre is a self reference, a new column is needed
 
 	```sql	
 	CREATE TABLE [Sales].[P_Orders](
@@ -563,6 +564,8 @@ The table **SalesOrder** will be partiioned considering that:
 	- What problems in data integrity can this create?
    - Does it make sense to create this UNIQUE index?
    - What can I do to force data uniqueness?
+
+	Add the partition column as index key and confirm it can be created:
 
 	```sql
 	CREATE UNIQUE NONCLUSTERED INDEX [AK_Sales_P_Order_rowguid] ON [Sales].[P_Orders]
@@ -762,15 +765,13 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	![Lab10008](Media/lab10008.png)
 
-	The execution plan also shows a Clustered Index Scan so how it is possible to get the same result with the same execution plan and at the same time to do less page reads
+	The execution plan also shows a Clustered Index Scan so, how it is possible to get the same result with the same execution plan and at the same time to do less page reads?
 	
 	Checking the details, the Clustered Index Scan did only 1886 logical reads and the operator cost was 0.0215314, meaning this query is more efficient. Notice that the execution plan shows it was necessary to access one of the partitions (so the Clustered Index Scan was done on only one partition and not the entire table)
 	
 	![Lab10007](Media/lab10009.png)
 	   
-1. Search in both tables by an indexed column other than the partition column for Sales.P_Orders
-
-	Query the unpartitioned table
+1. Search in both tables by an indexed column but don´t include the the partition column for Sales.P_Orders in the WHERE clause
 
 	```sql
 	USE [WideWorldImporters]
@@ -810,7 +811,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	![Lab10011](Media/lab10011.png)
 
-	Notice the query on the partitioned table does less logical reads than the same query on the unpartitioned table, as now SQL Serer was able to search for the rows by examining only the partitions that contained because the partition column is used in the WHERE clause in a way that partition elimination is possible
+	Notice the query on the partitioned table does less logical reads than the same query on the unpartitioned table, as now SQL Server was able to search for the rows by examining only the partitions that contained because the partition column is used in the WHERE clause in a way that partition elimination is possible
 
 1. See the behavior of the TOP, MIN y MAX functions
 
@@ -843,8 +844,6 @@ Compare changes on the execution plan and logical reads when querying partitione
 	SELECT max(OrderId) FROM [Sales].[P_Orders]
 	```
 
-	![Lab10013](Media/lab10013.png)
-
 	```sql
 	-- MIN
 	select min(OrderId) from [Sales].[Orders]
@@ -852,8 +851,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 	select min(OrderId) from [Sales].[P_Orders]
 	```
 
-	![Lab10013](Media/lab10013.png)
-
+	
 
 ### 2.6 Partitioning and data management
 
@@ -894,7 +892,7 @@ Partitioning management has 2 basic tasks: create partitions and delete partitio
 
 You can add new partitions to a table until the 15.000 partitions limits. You can also keep just a fixed number of partitions in a sliding windows scenarios where you delete the oldest partition and create a new none for the most recent data
 
-For this demo, the partition with the oldest data will be deleted and a new one will be created for the most recent data
+For this demo, the partition with the oldest data will be deleted and a new one will be created for the new data that will be added to the table
 
 1. What is the partition with the oldest data?
 
@@ -947,7 +945,7 @@ For this demo, the partition with the oldest data will be deleted and a new one 
 	WITH (PARTITIONS (2));
 	```
 
-	Now P_Orders has 2 empty partitions (PartitionNumber=1 and ParitionNumber=2). Confirm that by executing:
+	Now P_Orders has 2 empty partitions (PartitionNumber=1 and PartitionNumber=2). Confirm that by executing:
 
 	```sql
 	SELECT
@@ -1028,9 +1026,8 @@ For this demo, the partition with the oldest data will be deleted and a new one 
    - Notice the boundaries between partitionNumber 1 and 2
    - Notice that after the MERGE the table has 40 partitions 
 
-1. Create a partition for the next month
+1. Create a partition for the next month (June 2016)
 
-   Create the partition for June 2016
    Set the Filegroup to be used for the new partition
 
 	```sql
@@ -1038,7 +1035,7 @@ For this demo, the partition with the oldest data will be deleted and a new one 
 	NEXT USED [FG_SalesOrder_M_2_6_10];
 	```
 
-	Create the new parition
+	Create the new Partition
 
 	```sql
 	ALTER PARTITION FUNCTION [PF_SalesOrder_MONTHLY]()
@@ -1529,6 +1526,8 @@ BEGIN TRANSACTION
 - How many locks do you see? 
 - Why do you see PAGE KEY, PAGE, OBJECT and DATABASE locks 
 
+Rollback the transaction
+
 ```sql
 ROLLBACK
 ```
@@ -1548,11 +1547,13 @@ BEGIN TRANSACTION
 
 Even when there more than 5000 locks, there are not 5000 locks on a single partition, so there is no lock scalation to table
 
+Rollback the transaction
+
 ```sql
 ROLLBACK
 ```
 
-For demo purposes, load around 50000 rows on a sigle partition
+For demo purposes, load around 50000 rows on a sigle partition. It will take less than a minute.
 
 ```sql
 DECLARE @rows_in_partition int = 1
@@ -1613,10 +1614,10 @@ Notice that olny have 2 locks now. The lock with resource_type = OBJECT is the l
 In another session execute the following two sentences
 
 ```sql
-select * FROM  [Sales].[P_Orders]
+SELECT * FROM  [Sales].[P_Orders]
 WHERE OrderId  = 100
 
-delete FROM  [Sales].[P_Orders]
+DELETE FROM  [Sales].[P_Orders]
 WHERE OrderId  = 100
 ```
 
@@ -1625,14 +1626,13 @@ Notice that the query gets blocked even when the row you are trying to delete is
 Stop the query on the second session and rollback the transaction on the first session 
 
 ```sql
-ROLLBACK;  
-GO  
+ROLLBACK
 ```
 
 On the first session, change the scalation mode for the table to AUTO
 
 ```sql
-ALTER TABLE [Sales].[P_Orders]SET (LOCK_ESCALATION = AUTO);  
+ALTER TABLE [Sales].[P_Orders] SET (LOCK_ESCALATION = AUTO);  
 GO  
 ```
 
@@ -1657,11 +1657,11 @@ Notice that now you have 3 locks. The lock with resource_type = HOBT is the lock
 In another session execute the following two sentences
 
 ```sql
-select * FROM  [Sales].[P_Orders]
-WHERE OrderId  = 101
+SELECT * FROM  [Sales].[P_Orders]
+WHERE OrderId  = 100
 
-delete FROM  [Sales].[P_Orders]
-WHERE OrderId  = 101
+DELETE FROM  [Sales].[P_Orders]
+WHERE OrderId  = 100
 ```
 
 Notice that the query gets blocked even when the row you are trying to delete is in another partition	
@@ -1869,7 +1869,7 @@ WHERE
 p.OBJECT_id in ( OBJECT_id ('[Sales].[P_Orders]') )
 AND p.partition_number = 2
 order by p.object_id, p.partition_number, i.index_id
-```sql
+```
 
 and look at the compression_level column. Notice that the same partition for different indexes can have different compression levels
 
