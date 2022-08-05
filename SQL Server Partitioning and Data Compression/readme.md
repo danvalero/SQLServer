@@ -6,7 +6,7 @@
 		- [2.2 Why to partition?](#22-why-to-partition)
 		- [2.3 Components](#23-components)
 		- [2.4 Aligned Indexes vs Non aligned Indexes](#24-aligned-indexes-vs-non-aligned-indexes)
-		- [Demo 1. Creaating a partitioned table](#demo-1-creaating-a-partitioned-table)
+		- [Demo 1. Creating a partitioned table](#demo-1-creating-a-partitioned-table)
 		- [2.5 Partitioning and Query Performance](#25-partitioning-and-query-performance)
 		- [Demo 2. Partitioning and Query Performance](#demo-2-partitioning-and-query-performance)
 		- [2.6 Partitioning and data management](#26-partitioning-and-data-management)
@@ -25,9 +25,8 @@
 		- [3.1 Compression Levels](#31-compression-levels)
 		- [3.2 When to use data compression?](#32-when-to-use-data-compression)
 		- [Demo 8. Partitioning and data compression](#demo-8-partitioning-and-data-compression)
-	- [4. Table Partitioning and Data Compression in Azure SQL Database](#4-table-partitioning-and-data-compression-in-azure-sql-database)
 
-> **IMPORTANT:** Many images and text are obtained from Microsoft public documention for SQL Server [Partitioned tables and indexes](https://docs.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes)
+> **IMPORTANT:** Many images and text are obtained from Microsoft public documentation for SQL Server [Partitioned tables and indexes](https://docs.microsoft.com/en-us/sql/relational-databases/partitions/partitioned-tables-and-indexes)
 
 ## 1. Setting up the environment
 
@@ -43,7 +42,7 @@ If you want to do the demos by yourself, I recommend you to:
 
 Partitioning is available starting in SQL Server 2005
 
-Partitioning is a Enterprise feature of SQL Server from SQL Server 2005 to SQL Server 2016. Starting in SQL Server 2016 SP1, it is available in all editions (including Express and Local DB)
+Partitioning is an Enterprise feature of SQL Server from SQL Server 2005 to SQL Server 2016. Starting in SQL Server 2016 SP1, it is available in all editions (including Express and Local DB)
 
 Starting in SQL Server 2012 a table/index can have up to 15000 partitions. In versions earlier than SQL Server 2012, the number of partitions was limited to 1,000 by default.
 
@@ -77,7 +76,7 @@ The data of partitioned tables and indexes is divided into units that can be spr
 
   A range type (either LEFT or RIGHT), specifies how the boundary values of the partition function will be put into the resulting partitions
 
-  >NOTE: Every row always fit in one the partitions
+  >NOTE: Every row always fits in one the partitions
 
 
   - **Range Left** means the boundary value is the last value in the left partition
@@ -107,7 +106,7 @@ The data of partitioned tables and indexes is divided into units that can be spr
 	 AS RANGE ???? FOR VALUES ('2016-01-01','2016-02-01','2016-03-01')
 	 ``` 
 
-    Use the image below to make a desision
+    Use the image below to make a decision
 
     ![Datetime Range](Media/datetime-range.png)
 
@@ -135,9 +134,9 @@ The data of partitioned tables and indexes is divided into units that can be spr
 
   An index partitioned independently from its corresponding table. That is, the index has a different partition scheme or is placed on a separate filegroup from the base table. 
 
-  >Creating and rebuilding nonaligned indexes on a table with more than 1,000 partitions is possible, but is not supported. Doing so may cause degraded performance or excessive memory consumption during these operations. We recommend using only aligned indexes when the number of partitions exceed 1,000. 
+  >Creating and rebuilding nonaligned indexes on a table with more than 1,000 partitions is possible, but is not supported. Doing so may cause degraded performance or excessive memory consumption during these operations. We recommend using only aligned indexes when the number of partitions exceeds 1,000. 
 
-### Demo 1. Creaating a partitioned table
+### Demo 1. Creating a partitioned table
 
 The table **SalesOrder** will be partiioned considering that:
 
@@ -222,7 +221,7 @@ The table **SalesOrder** will be partiioned considering that:
 	GO
 	```
 
-1. Get the minimum and maximum value in the unpartitioined table for the partition colum 
+1. Get the minimum and maximum value in the unpartitioned table for the partition column  
 
    ```sql
 	SELECT min(OrderDate) as min_orderdate
@@ -550,7 +549,7 @@ The table **SalesOrder** will be partiioned considering that:
 	ORDER BY p.object_id, p.partition_number, i.index_id
 	```
 
-	The following index does not exists in the original table but is created to show a concept
+	The following index does not exist in the original table but is created to show a concept
 
 	```sql
 	CREATE UNIQUE NONCLUSTERED INDEX [AK_Sales_P_Order_rowguid] ON [Sales].[P_Orders]
@@ -589,7 +588,7 @@ The table **SalesOrder** will be partiioned considering that:
 
 	In which partition will the following row be inserted on Sales.P_Orders?
 
-	You can use the $partition.<partition funtion name> funtion using the date you want to check as parameter
+	You can use the $partition.<partition function name> function using the date you want to check as parameter
 
 	```sql
 	select top 1 $partition.[PF_SalesOrder_MONTHLY](OrderDate) as partition, * 
@@ -597,7 +596,7 @@ The table **SalesOrder** will be partiioned considering that:
 	where OrderDate = '2013-04-02'
 	```
 
-	The result is the partition that correspond to the value
+	The result is the partition that corresponds to the value
 
 	![Lab10003](Media/lab10003.png)
 
@@ -763,13 +762,13 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	![Lab10008](Media/lab10008.png)
 
-	The execution plan also shows a Clustered Index Scan so how it is posible to get the same result with the same execution plan and at the same time to do less page reads
+	The execution plan also shows a Clustered Index Scan so how it is possible to get the same result with the same execution plan and at the same time to do less page reads
 	
-	Checking the details, the Clustered Index Scan that did only 1886 logical reads and the operator cost was 0.0215314, meaning this query is more efficient. Notice that the execution plan shows it was necessary to access one of the partition (so the Clustered Index Scan was don on only one partition and not the entire table)
+	Checking the details, the Clustered Index Scan did only 1886 logical reads and the operator cost was 0.0215314, meaning this query is more efficient. Notice that the execution plan shows it was necessary to access one of the partitions (so the Clustered Index Scan was done on only one partition and not the entire table)
 	
 	![Lab10007](Media/lab10009.png)
 	   
-1. Search in both tables by an indexed column other that the partition column for Sales.P_Orders
+1. Search in both tables by an indexed column other than the partition column for Sales.P_Orders
 
 	Query the unpartitioned table
 
@@ -790,7 +789,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	Notice the query on the unpartitioned table does less logical reads than the same query on the partitioned table
 
-	You read mores pages using the partitioned table even when both queries use a Clustered Index Seek. The reason is that SQL Server has to check all partitions of the table and the combined size of the internal strcutures for all partitions is bigger than the internal structure for the unpartition table
+	You read more pages using the partitioned table even when both queries use a Clustered Index Seek. The reason is that SQL Server must check all partitions of the table and the combined size of the internal structures for all partitions is bigger than the internal structure for the unpartitioned table
 
 1. Add the partition column in the WHERE clause to the previous query
 
@@ -811,7 +810,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	![Lab10011](Media/lab10011.png)
 
-	Notice the query on the partitioned table does less logical reads than the same query on the unpartitioned table, as now SQL Serer was able to search for the ros by examining only the partitions that contained becuase the partition column is used in the WHERE clause in a way that partition elimination is possible
+	Notice the query on the partitioned table does less logical reads than the same query on the unpartitioned table, as now SQL Serer was able to search for the rows by examining only the partitions that contained because the partition column is used in the WHERE clause in a way that partition elimination is possible
 
 1. See the behavior of the TOP, MIN y MAX functions
 
@@ -831,7 +830,7 @@ Compare changes on the execution plan and logical reads when querying partitione
 
 	![Lab10012](Media/lab10012.png)
 
-	The query reads more pages using the partitioned table even when both queries look using the first column of the clustered index. The reason is that SQL Server has to check all partitions of the table and the combined size of the internal strcutures for all partitions is bigger than the internal structure for the unpartition table. 
+	The query reads more pages using the partitioned table even when both queries look using the first column of the clustered index. The reason is that SQL Server must check all partitions of the table and the combined size of the internal structures for all partitions is bigger than the internal structure for the unpartitioned table. 
 
 	You will see the same situation when using MAX and MIN
 
@@ -891,11 +890,11 @@ ALTER PARTITION FUNCTION PF2_LEFT() SPLIT RANGE (40);
 
 ### Demo 3. Partitioning and Data Management
 
-Partitioning management has 3 basic tasks: create partitiona and delete partitions
+Partitioning management has 2 basic tasks: create partitions and delete partitions
 
-You can add new partiion to a table until the 15.000 partiions limits. You can also keep just a fixed number of partition in a slideing windows scenarios where you delete the oldest partition and craete a new none for the most recetn data
+You can add new partitions to a table until the 15.000 partitions limits. You can also keep just a fixed number of partitions in a sliding windows scenarios where you delete the oldest partition and create a new none for the most recent data
 
-For this demo, the partiion with the oldest data will be deleted and a new one will bre created for the most recent data
+For this demo, the partition with the oldest data will be deleted and a new one will be created for the most recent data
 
 1. What is the partition with the oldest data?
 
@@ -1032,7 +1031,7 @@ For this demo, the partiion with the oldest data will be deleted and a new one w
 1. Create a partition for the next month
 
    Create the partition for June 2016
-   Set the Filegroup to be used for the new parittion
+   Set the Filegroup to be used for the new partition
 
 	```sql
 	ALTER PARTITION SCHEME [PS_SalesOrder_MONTHLY] 
@@ -1087,7 +1086,7 @@ You can rebuild or reorganize a partition (or a group of it) instead of the enti
 
 It increases the availability of the database and reduces the performance impact of maintenances
 
->NOTE: ONLINE option is available starting SQL Sever 2014
+>NOTE: ONLINE option is available starting SQL Server 2014
 
 ```sql
 ALTER INDEX IX_TransactionHistory_TransactionDate
@@ -1157,9 +1156,9 @@ WITH ( ONLINE = ON )
 
 When you use partitioning to handle historical data, it is usual that you execute queries on the single partition that contains live data and other queries on the partitions that contain historical data.
 
-In this scenario, it makes no sense to create a index on the whole table when you only need it to query data on some partitions. � This is valid even for non partitioned tables
+In this scenario, it makes no sense to create an index on the whole table when you only need it to query data on some partitions.  This is valid even for non-partitioned tables
 
-One advantage is that you also save space as the index only contains entries for data you are actually accessing. It is also possible that the statistics for the index are more precise as less data in covered by the statistic. 
+One advantage is that you also save space as the index only contains entries for data you are accessing. It is also possible that the statistics for the index are more precise as less data is covered by the statistic. 
 
 Filtered indexes are not used if you query span over more than one partition.
 
@@ -1212,10 +1211,9 @@ GROUP BY i.[name]
 GO
 ```
 
-This index covers all data in the table but we only search rows for the last sixty days so we have "wasted" space onthe index. It is posible to
-improve space usage and index efficiency and reduce time for maintenance operations by deleting the original index and create three indexes, each covering each the last three months
+This index covers all data in the table, but we only search rows for the last sixty days, so we have "wasted" space on the index. It is possible to improve space usage and index efficiency and reduce time for maintenance operations by deleting the original index and create three indexes, each covering each of the last three months
 
->Depending the escenario insted of creating three indexes, you can crete a single index for the last 3 months.. The only way to know the best option is to create them and tests querys and compare execution plans
+>Depending on the scenario, instead of creating three indexes, you can create a single index for the last 3 months. The only way to know the best option is to create them and tests queries and compare execution plans
 
 ```sql
 DROP INDEX [FK_Sales_P_Orders_CustomerID] ON [Sales].[P_Orders]
@@ -1268,7 +1266,7 @@ GROUP BY i.[name]
 GO
 ```
 
-Now less space is used for indexes, aroud 168KB insted of 2048KB
+Now less space is used for indexes, around 168KB instead of 2048KB
 
 Do the same search but using variables
 
@@ -1322,7 +1320,7 @@ AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
 
 Notice that you do not use filtered indexes and SQL scans the table even when the two indexes (combined) cover the range.
 
-Is there anything you can do to improve performance using filtered indexes in this scenario? Think of maintenance effors
+Is there anything you can do to improve performance using filtered indexes in this scenario? Think of maintenance efforts
 
 Just to leave the database as it as originally execute the following commands
 
@@ -1345,7 +1343,7 @@ If you have an index on the whole table, it is possible that its statistic is no
 
 You can use filtered statistics to help SQL Server to get better cardinality estimations.
 
-For example, you can create a statistics to cover just the data on an specific partition (and create one statistic per partition if necessary). It is possible that a filtered statistic is not used if you query span over more than one partition, but you can create filtered statistics that do no align with partition boundaries if necessary.
+For example, you can create a statistic to cover just the data on an specific partition (and create one statistic per partition if necessary). It is possible that a filtered statistic is not used if you query span over more than one partition, but you can create filtered statistics that do not align with partition boundaries if necessary.
 
 You can update statistics more frequently as it only considers a portion of the data
 
@@ -1362,7 +1360,7 @@ WITH FULLSCAN
 
 ### Demo 6. Partitioning and Filtered Statistics
 
-Supose that your application only allows you to list the of orders for a customer for the last sixty days
+Suppose that your application only allows you to list the orders for a customer for the last sixty days
 
 >NOTE: In the demo, a fixed date is used and not getdate() because the table only contains records up to 2016-06-01
 
@@ -1420,7 +1418,7 @@ AND OrderDate >= '2016-04-01' and OrderDate < '2016-05-01'
 
 ![Lab10022](Media/lab10022.png)
 
-Look at the Actual Number of Rows and the Estimated Number of Rows. The estiamtion is closer to reality 
+Look at the Actual Number of Rows and the Estimated Number of Rows. The estimation is closer to reality 
 
 You can check the Message tab to see which histograms were loaded. Notice that the filtered statistic for April 2016 was loaded
 
@@ -1428,16 +1426,20 @@ Execute the original query but using variables
 
 ```sql
 DBCC FREEPROCCACHE
+GO
 
-declare @fecha_inicial date = '2016-04-01'
-declare @fecha_final date = '2016-05-01'
+DECLARE @fecha_inicial date = '2016-04-01'
+DECLARE @fecha_final date = '2016-05-01'
 
 SELECT * 
 FROM [Sales].[P_Orders]
 WHERE CustomerID = 404
 AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
+AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
 GO
 ```
+
+![Lab10025](Media/lab10025.png)
 
 Notice that the estimation is not that good.
 You can check the Message tab to see which histograms were loaded. No statistic was loaded (or maybe a system generated statistic). Why?
@@ -1446,25 +1448,23 @@ Use the option RECOMPILE
 
 ```sql
 DBCC FREEPROCCACHE
+GO
 
-declare @fecha_inicial date = '2016-04-01'
-declare @fecha_final date = '2016-05-01'
+DECLARE @fecha_inicial date = '2016-04-01'
+DECLARE @fecha_final date = '2016-05-01'
 
 SELECT * 
 FROM [Sales].[P_Orders]
 WHERE CustomerID = 404
 AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
-option (recompile)
+AND OrderDate >= @fecha_inicial and OrderDate < @fecha_final
+OPTION (RECOMPILE)
+GO
 ```
+
+![Lab10026](Media/lab10026.png)
 
 You get better estimations, Why?
-
-Notice that the filtered statistic for April 2016 was loaded
-
-```sql
-select * from sys.stats
-where object_id = object_id ('[Sales].[P_Orders]')
-```
 
 Expand the range of search
 
@@ -1477,35 +1477,12 @@ WHERE CustomerID = 404
 AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
 ```
 
-Notice that the estimation is not that good.
-You can check the Message tab to see which histograms were loaded, The filtered statistics were not loaded even when the three statistics (combined) cover the range. Why?
+![Lab10027](Media/lab10027.png)
 
-To get better estimations, create filtered statistics for the last Quarter
+Notice that the estimation is not that good. The filtered statistics were not loaded even when the three statistics (combined) cover the range.
 
-```sql
-CREATE STATISTICS [STAT_Sales_P_Order_CustomerId2016_Q2] ON [Sales].[P_Orders] 
-([CustomerID] )  
-WHERE ( OrderDate >= '2016-04-01' and OrderDate < '2016-07-01' )
-WITH FULLSCAN
-```
+To get better estimations in this scenario, create filtered statistics for the last Quarter
 
-Run the query again
-
-```sql
-DBCC FREEPROCCACHE
-
-SELECT * 
-FROM [Sales].[P_Orders]
-WHERE CustomerID = 404
-AND OrderDate >= '2016-04-01' and OrderDate < '2016-06-01'
-```
-
-Notice that you have better estimation. Check the message tab and confirm you are now using the filterd statistic for the quarter
-
-```sql
-select * from sys.stats
-where object_id = object_id ('[Sales].[P_Orders]')
-```
 
 ### 2.10 Lock Scalation on partitioned tables
 
@@ -1522,13 +1499,11 @@ Lock escalation is triggered when lock escalation is not disabled on the table b
 
 - Engine must take a table lock to protect data integrity. 
 
-You can change table the lock scalation behavior of a table by using the ALTER TABLE SET LOCK_ESCALATION 
+You can change the table lock scalation behavior of a table by using the ALTER TABLE SET LOCK_ESCALATION 
 
-- TABLE: Lock escalation will be done at table-level granularity regardless whether the table is partitioned or not partitioned. TABLE is the default value. 
-
+- TABLE: Lock escalation will be done at table-level granularity regardless of whether the table is partitioned or not partitioned. TABLE is the default value. 
 - AUTO: If the table is partitioned, lock escalation will be allowed to partition. After the lock is escalated to the partition level, the lock will not be escalated later to TABLE granularity. 
-If the table is not partitioned, the lock escalation will be done to the TABLE granularity. 
-
+  If the table is not partitioned, the lock escalation will be done to the TABLE granularity. 
 - DISABLE: Prevents lock escalation in most cases. Table-level locks are not completely disallowed. For example, when you are scanning a table that has no clustered index under the serializable isolation level, Database Engine must take a table lock to protect data integrity. 
 
 ### Demo 7. Lock Scalation on partitioned tables
@@ -1631,7 +1606,9 @@ order by resource_type
 
 ```
 
-Notice that olny have 2 locks now. Lhe lock with resource_type = OBJECT is the lock a the table level
+![Lab10030](Media/lab10030.png)
+
+Notice that olny have 2 locks now. The lock with resource_type = OBJECT is the lock a the table level
 
 In another session execute the following two sentences
 
@@ -1643,15 +1620,16 @@ delete FROM  [Sales].[P_Orders]
 WHERE OrderId  = 100
 ```
 
-Notice that the query gets blocked even when the row you are trying to delete is in other partition, Why?		
+Notice that the query gets blocked even when the row you are trying to delete is in other partition. The lock on the table is blocking the delete operation		
 
-Stop the query on the second session and close it
+Stop the query on the second session and rollback the transaction on the first session 
 
 ```sql
-ROLLBACK
+ROLLBACK;  
+GO  
 ```
 
-Change the scalation mode for the table to AUTO
+On the first session, change the scalation mode for the table to AUTO
 
 ```sql
 ALTER TABLE [Sales].[P_Orders]SET (LOCK_ESCALATION = AUTO);  
@@ -1671,6 +1649,8 @@ where request_session_id = @@SPID
 order by resource_type
 ```
 
+![Lab10031](Media/lab10031.png)
+
 Notice that now you have 3 locks. The lock with resource_type = HOBT is the lock a the partition level
 	
 
@@ -1684,7 +1664,7 @@ delete FROM  [Sales].[P_Orders]
 WHERE OrderId  = 101
 ```
 
-Notice that the query gets blocked even when the rou you are trying to delete is in other partition, Why?		
+Notice that the query gets blocked even when the row you are trying to delete is in another partition	
 
 Stop the query
 	
@@ -1696,7 +1676,9 @@ WHERE OrderId  = 101
 and OrderDate = '2013-01-02'
 ```
 
-Notice that now you can delete the row, Why?
+Notice that now you can delete the row.
+
+Rollback the transaction on the first session.
 
 ```sql
 ROLLBACK
@@ -1704,11 +1686,11 @@ ROLLBACK
 
 ## 3. Data compression
 
-It does not change the table structure so no modification is required on applications. 
+It does not change the table structure, so no modification is required on applications. 
 
-You can compress specific partition of an index, so you can compress partitions that only contain cold data. This way you increase reports performance without affecting transactional operation on active partitions.
+You can compress specific partitions of an index, so you can compress partitions that only contain cold data. This way you increase reports performance without affecting transactional operation on active partitions.
 
-Two compression level exists on SQL Server 2008 +
+Two compression levels exist on SQL Server 2008 +
 
 
 ### 3.1 Compression Levels
@@ -1737,18 +1719,18 @@ Two compression level exists on SQL Server 2008 +
 
 ### 3.2 When to use data compression?
 
-Compression uses more CPU and increase response time for inserts and update operations.
+Compression uses more CPU and increases response time for inserts and update operations.
 
 Compression reduces response time for read operations as less IO is required.
 
-It is recommended mainly for non changing data or data that changes unfrequently.
+It is recommended mainly for non-changing data or data that changes unfrequently.
 
 Estimate how much data you will save for each index using [sp_estimate_data_compression_savings](https://docs.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-estimate-data-compression-savings-transact-sql)
 
 You must decide which compression mode to use: row or page
 - Do not use compression if saving with both modes will be insignificant.
 - Use PAGE instead of ROW if saving is significantly higher with PAGE than with ROW.
-- If you must compress data that changes constantly use ROW to reduce performance penalty.
+- If you must compress data that changes constantly, use ROW to reduce performance penalty.
 
 ### Demo 8. Partitioning and data compression
 
@@ -1764,11 +1746,9 @@ EXEC sp_estimate_data_compression_savings 'Sales', 'Orders', 1, NULL, 'PAGE' ;
 GO
 ```
 
-- Which compression level should I use for the clustered index?
-
 See IO generated by each level of compression
 
-- How much IO is generated if the tables is read completly without compression?
+- How much IO is generated if the table is read completely without compression?
 
 	```sql
 	SET STATISTICS IO ON
@@ -1777,7 +1757,7 @@ See IO generated by each level of compression
 
 	You get around 1500 logical reads (if you completed previous demos) 
 
-- How much IO is generated if the tables is read completly using ROW compression?
+- How much IO is generated if the table is read completely using ROW compression?
 
 	```sql
 	alter index [PK_Sales_P_Orders] on [Sales].[P_Orders] 
@@ -1788,7 +1768,7 @@ See IO generated by each level of compression
 
 	You get around 1135 logical reads (if you completed previous demos) 
 
-- How much IO is generated if the tables is read completly using PAGE compression?
+- How much IO is generated if the table is read completely using PAGE compression?
 
 	```sql
 	alter index [PK_Sales_P_Orders] on [Sales].[P_Orders] 
@@ -1808,6 +1788,8 @@ REBUILD with (data_compression = NONE)
 
 You should you the same analysis for each Index and select the best compression level for it
 
+To get compressions estimations for index_id=2, execute:
+
 ```sql
 EXEC sp_estimate_data_compression_savings 'Sales', 'P_Orders', 2, NULL, 'ROW' ;
 GO
@@ -1815,9 +1797,7 @@ EXEC sp_estimate_data_compression_savings 'Sales', 'P_Orders', 2, NULL, 'PAGE' ;
 GO
 ```
 
- Which compression level should I use for the index_id = 2?
-
-Compress some specific partitions of index_id=1
+To compress some specific partitions of index_id=1
 
 ```sql
 alter index [PK_Sales_P_Orders]  on [Sales].[P_Orders] 
@@ -1859,8 +1839,7 @@ AND p.index_id = 1
 order by p.object_id, p.index_id, p.partition_number
 ```
 
-Take a look of compression_level column. Notice that you can have different compression level on different partitoins on the same index
-
+Look at the compression_level column. Notice that you can have different compression levels on different partitions on the same index
 Execute:
 
 ```sql
@@ -1892,7 +1871,7 @@ AND p.partition_number = 2
 order by p.object_id, p.partition_number, i.index_id
 ```sql
 
-and take a look of compression_level column. Notice that the same partition for different indexes can have different compression level
+and look at the compression_level column. Notice that the same partition for different indexes can have different compression levels
 
 You can also compress several partitions of index_id=1 at once
 
@@ -1932,13 +1911,7 @@ AND p.index_id = 1
 order by p.object_id, p.index_id, p.partition_number
 ```
 
-and take a look of compression_level column to see the final state of the index_id = 1
-
-
-## 4. Table Partitioning and Data Compression in Azure SQL Database
-
-
-
+and look at the compression_level column to see the final state of the index_id = 1
 
 
 
